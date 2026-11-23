@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795477033,
+  "updated_at": 1795477104,
   "games": {
     "366260": {
       "revision": 2,
@@ -70,6 +70,38 @@
       "summary_en": "test",
       "summary_pt": "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
       "obtainability": "unobtainable"
+    },
+    "1301210": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {},
+      "shutdown": {
+        "date": null,
+        "scope": null
+      },
+      "status": "servers_shutdown",
+      "shutdown_info": {
+        "is_shutdown": true,
+        "shutdown_date": null,
+        "scope": null
+      }
+    },
+    "1582170": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {},
+      "shutdown": {
+        "date": null,
+        "scope": null
+      },
+      "status": "servers_shutdown",
+      "shutdown_info": {
+        "is_shutdown": true,
+        "shutdown_date": null,
+        "scope": null
+      }
     }
   },
   "tags": {
