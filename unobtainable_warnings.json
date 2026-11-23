@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "updated_at": 1795460980,
+  "updated_at": 1795464216,
   "games": {
     "366260": {
-      "revision": 1,
+      "revision": 2,
       "status": "unobtainable_100",
       "shutdown_info": {
         "is_shutdown": false,
@@ -23,6 +23,18 @@
           "note_pt": "[TESTE] Reportada como quebrada: não desbloqueia."
         }
       }
+    },
+    "1063730": {
+      "revision": 1,
+      "achievements": {},
+      "status": "servers_shutdown",
+      "shutdown_info": {
+        "is_shutdown": true,
+        "shutdown_date": "2027-01-31",
+        "scope": "Entire game"
+      },
+      "summary_en": "Servers are shutting down at Jan 31st, 2027",
+      "summary_pt": ""
     }
   }
 }
