@@ -103,8 +103,10 @@ the next sync.
 - **Cloudflare Worker** (`discord-worker/`): `npx wrangler deploy`. Instant sync: create a
   fine-grained GitHub token for this repository only, with **Actions: Read and write**, then run
   `npx wrangler secret put GITHUB_DISPATCH_TOKEN` in `discord-worker/` and paste it. Settings live in
-  `wrangler.toml` (no secrets: only Discord's *public* key). Keep `ADMIN_USER_IDS` in sync with
-  the GitHub variable.
+  `wrangler.toml` (no secrets: only Discord's *public* key).
+- **Admins** (who can flag): the list lives in the GitHub variable `DISCORD_ADMIN_USER_IDS` and
+  in the Worker secret `ADMIN_USER_IDS`. Update both at once with `tools/discord-admins.ps1`
+  in the app repo: `-Add <discord user id>`, `-Remove <id>`, or no arguments to list them.
 - **Discord Developer Portal** → General Information → *Interactions Endpoint URL* = the
   Worker URL. Message Content Intent must stay on (for text commands).
 - **Slash commands**: after changing `discord-worker/commands.json`, run
