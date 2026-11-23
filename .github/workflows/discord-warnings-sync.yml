@@ -7,6 +7,7 @@
 #   Variable DISCORD_CHANNEL_ID       ID do canal de administração
 #   Variable DISCORD_ADMIN_USER_IDS   IDs de usuário autorizados, separados por vírgula
 #   Variable DISCORD_ADMIN_ROLE_ID    (opcional) ID do cargo de admins
+#   Variable DISCORD_APPLICATION_ID   ID do app (para aplicar as respostas do Worker aos comandos de barra)
 # Sem o token/canal o job só avisa e termina. Comandos: veja WARNINGS.md.
 name: Discord warnings sync
 
@@ -34,6 +35,7 @@ jobs:
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
+          DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
           DISCORD_ADMIN_USER_IDS: ${{ vars.DISCORD_ADMIN_USER_IDS }}
           DISCORD_ADMIN_ROLE_ID: ${{ vars.DISCORD_ADMIN_ROLE_ID }}
           FEED_PATH: unobtainable_warnings.json

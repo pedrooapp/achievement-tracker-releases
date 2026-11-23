@@ -1,0 +1,33 @@
+# Registra os comandos de barra do bot (/game, /ach, /remove, /show, /tag, /help) no servidor.
+# Rode à mão (Actions → "Register Discord commands" → Run workflow) depois de mudar
+# discord-worker/commands.json. Usa o secret DISCORD_BOT_TOKEN e as variáveis
+# DISCORD_APPLICATION_ID e DISCORD_GUILD_ID deste repositório.
+name: Register Discord commands
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Registrar comandos no servidor
+        env:
+          TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          APP_ID: ${{ vars.DISCORD_APPLICATION_ID }}
+          GUILD_ID: ${{ vars.DISCORD_GUILD_ID }}
+        run: |
+          set -euo pipefail
+          # Comandos do servidor aparecem na hora (globais podem levar até 1 h).
+          curl --fail-with-body -sS -X PUT \
+            -H "Authorization: Bot ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: DiscordBot (https://github.com/pedrooapp/achievement-tracker-releases, 1.0)" \
+            --data @discord-worker/commands.json \
+            "https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands" \
+            | python3 -c "import json,sys; print('Registered:', ', '.join('/' + c['name'] for c in json.load(sys.stdin)))"

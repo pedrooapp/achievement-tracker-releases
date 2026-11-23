@@ -20,9 +20,17 @@ Comandos (uma por mensagem; linhas "en:" / "pt:" opcionais logo abaixo):
   !remove <appid>              remove o jogo inteiro
   !remove <appid> <API_NAME>   remove só uma conquista
   !show <appid>                responde com o que está publicado para o jogo
+  !tag add <chave> [breaks100=yes|no]   cria/edita um tipo (tag) novo; linhas en:/pt: = nome
+  !tag remove <chave>          apaga um tipo criado (só se nenhum jogo usar)
+  !tags                        lista os tipos
   !help                        lista os comandos
 
-Tipos aceitos: servers_shutdown, unobtainable_100, partial_broken, mp_required, dlc_required.
+Tipos aceitos: os 5 fixos (servers_shutdown, unobtainable_100, partial_broken, mp_required,
+dlc_required) + os criados com !tag add (ficam em "tags" no feed).
+
+Comandos de barra (/game, /ach, /tag…) são respondidos na hora por um Cloudflare Worker,
+que posta a confirmação no canal num bloco ```text com o comando equivalente; este script
+aplica esse bloco como se fosse um comando de texto (autor = quem usou o comando de barra).
 Toda mudança num jogo sobe a `revision` dele (o app notifica uma vez por revisão).
 
 Sem dependências externas (só a biblioteca padrão do Python 3.10+).
@@ -42,7 +50,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-FLAGS = ("servers_shutdown", "unobtainable_100", "partial_broken", "mp_required", "dlc_required")
+BUILTIN_FLAGS = ("servers_shutdown", "unobtainable_100", "partial_broken", "mp_required", "dlc_required")
+TAG_KEY = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
 API = "https://discord.com/api/v10"
 USER_AGENT = "DiscordBot (https://github.com/pedrooapp/achievement-tracker-releases, 1.0)"
 MAX_REPLY = 1900
@@ -51,7 +60,8 @@ HELP = """**Achievement Tracker — warnings commands**
 `!game <appid> <status> [shutdown=YYYY-MM-DD] [scope=text]` + lines `en: …` / `pt: …`
 `!ach <appid> <API_NAME> <type> [tags=a,b]` + lines `en: …` / `pt: …`
 `!remove <appid>` · `!remove <appid> <API_NAME>` · `!show <appid>` · `!help`
-Types: """ + ", ".join(FLAGS)
+`!tag add <key> [breaks100=yes|no]` + lines `en: Name` / `pt: Nome` · `!tag remove <key>` · `!tags`
+Types: """ + ", ".join(BUILTIN_FLAGS) + " + your tags (`!tags`)"
 
 
 class CommandError(Exception):
@@ -107,11 +117,32 @@ def _app_id(text: str) -> str:
     return str(int(text))
 
 
-def _flag(text: str) -> str:
+def all_types(feed: dict) -> list[str]:
+    """Tipos aceitos: os 5 fixos + as tags criadas pelos admins."""
+    return list(BUILTIN_FLAGS) + sorted(feed.get("tags", {}))
+
+
+def _flag(text: str, feed: dict) -> str:
     flag = text.lower()
-    if flag not in FLAGS:
-        raise CommandError(f"Unknown type `{text}`. Use one of: {', '.join(FLAGS)}.")
+    if flag not in all_types(feed):
+        raise CommandError(f"Unknown type `{text}`. Use one of: {', '.join(all_types(feed))} (or create it with `!tag add`).")
     return flag
+
+
+def _yes(text: str) -> bool:
+    if text.lower() in ("yes", "y", "true", "1", "sim", "s"):
+        return True
+    if text.lower() in ("no", "n", "false", "0", "nao", "não"):
+        return False
+    raise CommandError(f"`{text}` should be yes or no.")
+
+
+def _uses_tag(feed: dict, key: str) -> list[str]:
+    used = []
+    for app_id, game in feed.get("games", {}).items():
+        if game.get("status") == key or any(a.get("type") == key for a in game.get("achievements", {}).values()):
+            used.append(app_id)
+    return used
 
 
 def _date(text: str) -> str:
@@ -157,7 +188,7 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
     if cmd.name == "game":
         if len(cmd.args) != 2:
             raise CommandError("Usage: `!game <appid> <status> [shutdown=YYYY-MM-DD] [scope=text]` + `en:` / `pt:` lines")
-        app_id, status = _app_id(cmd.args[0]), _flag(cmd.args[1])
+        app_id, status = _app_id(cmd.args[0]), _flag(cmd.args[1], feed)
         game = games.setdefault(app_id, {"revision": 0, "achievements": {}})
         game["status"] = status
         if "shutdown" in cmd.options:
@@ -181,7 +212,7 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
     elif cmd.name == "ach":
         if len(cmd.args) != 3:
             raise CommandError("Usage: `!ach <appid> <API_NAME> <type> [tags=a,b]` + `en:` / `pt:` lines")
-        app_id, api_name, kind = _app_id(cmd.args[0]), cmd.args[1], _flag(cmd.args[2])
+        app_id, api_name, kind = _app_id(cmd.args[0]), cmd.args[1], _flag(cmd.args[2], feed)
         if app_id not in games:
             raise CommandError(f"Flag the game first with `!game {app_id} <status>`.")
         game = games[app_id]
@@ -213,6 +244,46 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
                 raise CommandError(f"`{cmd.args[1]}` has no warning in `{app_id}`.")
             del achievements[cmd.args[1]]
             _touch(games[app_id])
+
+    elif cmd.name == "tags":
+        tags = feed.get("tags", {})
+        lines = [f"`{k}` (built-in)" for k in BUILTIN_FLAGS]
+        for key in sorted(tags):
+            t = tags[key]
+            lines.append(f"`{key}` — {t.get('label_en') or key} / {t.get('label_pt') or '—'}" + (" · breaks 100%" if t.get("breaks_100") else ""))
+        return "**Types**\n" + "\n".join(lines)
+
+    elif cmd.name == "tag":
+        if len(cmd.args) != 2 or cmd.args[0].lower() not in ("add", "remove"):
+            raise CommandError("Usage: `!tag add <key> [breaks100=yes|no]` + `en:` / `pt:` lines, or `!tag remove <key>`")
+        action, key = cmd.args[0].lower(), cmd.args[1].lower()
+        if key in BUILTIN_FLAGS:
+            raise CommandError(f"`{key}` is a built-in type and can't be changed.")
+        if not TAG_KEY.match(key):
+            raise CommandError("Tag keys use lowercase letters, numbers and `_` (2–32 chars), starting with a letter. Ex.: `grindy`.")
+        tags = feed.setdefault("tags", {})
+        if action == "remove":
+            if key not in tags:
+                raise CommandError(f"Tag `{key}` doesn't exist.")
+            used = _uses_tag(feed, key)
+            if used:
+                raise CommandError(f"Tag `{key}` is still used in: {', '.join(used[:10])}. Change those first.")
+            del tags[key]
+        else:
+            tag = tags.setdefault(key, {})
+            if cmd.en:
+                tag["label_en"] = cmd.en
+            if cmd.pt:
+                tag["label_pt"] = cmd.pt
+            if not tag.get("label_en"):
+                raise CommandError("Add a line `en: <name in English>` (required for new tags).")
+            tag.setdefault("label_pt", "")
+            if "breaks100" in cmd.options:
+                tag["breaks_100"] = _yes(cmd.options["breaks100"])
+            tag.setdefault("breaks_100", False)
+            # Jogos que já usam a tag passam a mostrar o nome novo: sobe a revisão deles.
+            for app_id in _uses_tag(feed, key):
+                _touch(feed["games"][app_id])
 
     else:
         raise CommandError(f"Unknown command `!{cmd.name}`. Type `!help`.")
@@ -277,15 +348,37 @@ class Discord:
         )
 
 
+WORKER_BLOCK = re.compile(r"```text\n(.*?)\n```", re.S)
+
+
+def worker_command(msg: dict, app_id: str | None) -> tuple[Command, str] | None:
+    """Resposta do Worker a um comando de barra → (comando, id de quem usou o comando).
+
+    Só vale para mensagens do PRÓPRIO bot criadas por uma interação, com o bloco ```text."""
+    if not app_id or msg.get("author", {}).get("id") != app_id:
+        return None
+    meta = msg.get("interaction_metadata") or msg.get("interaction") or {}
+    user_id = (meta.get("user") or {}).get("id")
+    match = WORKER_BLOCK.search(msg.get("content", ""))
+    if not user_id or not match:
+        return None
+    cmd = parse_command(match.group(1))
+    return (cmd, user_id) if cmd else None
+
+
+def is_admin_id(discord: Discord, user_id: str, guild: str | None, admin_users: set[str], admin_role: str | None) -> bool:
+    if user_id in admin_users:
+        return True
+    if admin_role and guild:
+        return admin_role in discord.member_roles(guild, user_id)
+    return False
+
+
 def is_admin(discord: Discord, msg: dict, guild: str | None, admin_users: set[str], admin_role: str | None) -> bool:
     author = msg.get("author", {})
     if author.get("bot"):
         return False
-    if author.get("id") in admin_users:
-        return True
-    if admin_role and guild:
-        return admin_role in discord.member_roles(guild, author["id"])
-    return False
+    return is_admin_id(discord, author.get("id", ""), guild, admin_users, admin_role)
 
 
 def run() -> int:
@@ -299,6 +392,7 @@ def run() -> int:
     if not admin_users and not admin_role:
         print("::error::Set DISCORD_ADMIN_USER_IDS and/or DISCORD_ADMIN_ROLE_ID: without admins every command would be refused.")
         return 1
+    app_id = env.get("DISCORD_APPLICATION_ID", "").strip() or None
     feed_path = Path(env.get("FEED_PATH", "unobtainable_warnings.json"))
     state_path = Path(env.get("STATE_PATH", "discord_sync_state.json"))
 
@@ -317,11 +411,19 @@ def run() -> int:
             break
         for msg in batch:
             last = msg["id"]
-            cmd = parse_command(msg.get("content", ""))
-            if cmd is None:
-                continue  # conversa normal: não precisa gravar estado por ela
+            from_worker = worker_command(msg, app_id)
+            if from_worker:
+                cmd, invoker = from_worker
+                allowed = is_admin_id(discord, invoker, guild, admin_users, admin_role)
+                who = f"<@{invoker}> via slash command"
+            else:
+                cmd = parse_command(msg.get("content", ""))
+                if cmd is None:
+                    continue  # conversa normal: não precisa gravar estado por ela
+                allowed = is_admin(discord, msg, guild, admin_users, admin_role)
+                who = msg.get("author", {}).get("username")
             processed_any = True
-            if not is_admin(discord, msg, guild, admin_users, admin_role):
+            if not allowed:
                 discord.react(channel, msg["id"], "⛔")
                 continue
             try:
@@ -333,7 +435,7 @@ def run() -> int:
                 discord.react(channel, msg["id"], "✅")
                 if answer:
                     discord.reply(channel, msg["id"], answer)
-                print(f"applied !{cmd.name} {' '.join(cmd.args)} from {msg['author'].get('username')}")
+                print(f"applied !{cmd.name} {' '.join(cmd.args)} from {who}")
             except CommandError as e:
                 discord.react(channel, msg["id"], "❌")
                 discord.reply(channel, msg["id"], f"❌ {e}")

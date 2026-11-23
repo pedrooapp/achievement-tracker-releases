@@ -1,0 +1,73 @@
+[
+  {
+    "name": "game",
+    "description": "Flag a whole game (servers shut down, broken achievements, DLC/multiplayer required…)",
+    "default_member_permissions": "0",
+    "options": [
+      { "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 },
+      { "type": 3, "name": "status", "description": "Warning type", "required": true, "autocomplete": true },
+      { "type": 3, "name": "en", "description": "Summary in English (required the first time)", "required": false, "max_length": 300 },
+      { "type": 3, "name": "pt", "description": "Resumo em português", "required": false, "max_length": 300 },
+      { "type": 3, "name": "shutdown", "description": "Shutdown date (YYYY-MM-DD)", "required": false, "max_length": 10 },
+      { "type": 3, "name": "scope", "description": "What shut down (e.g. online mode)", "required": false, "max_length": 80 }
+    ]
+  },
+  {
+    "name": "ach",
+    "description": "Flag one achievement of a flagged game",
+    "default_member_permissions": "0",
+    "options": [
+      { "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 },
+      { "type": 3, "name": "api_name", "description": "Achievement API name", "required": true, "max_length": 100 },
+      { "type": 3, "name": "type", "description": "Warning type", "required": true, "autocomplete": true },
+      { "type": 3, "name": "en", "description": "Note in English (required the first time)", "required": false, "max_length": 300 },
+      { "type": 3, "name": "pt", "description": "Nota em português", "required": false, "max_length": 300 },
+      { "type": 3, "name": "tags", "description": "Extra tags, comma-separated (e.g. online,missable)", "required": false, "max_length": 120 }
+    ]
+  },
+  {
+    "name": "remove",
+    "description": "Remove a game's warning, or just one achievement",
+    "default_member_permissions": "0",
+    "options": [
+      { "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 },
+      { "type": 3, "name": "api_name", "description": "Only this achievement (optional)", "required": false, "max_length": 100 }
+    ]
+  },
+  {
+    "name": "show",
+    "description": "Show what is published for a game",
+    "default_member_permissions": "0",
+    "options": [{ "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 }]
+  },
+  {
+    "name": "tag",
+    "description": "Manage your own warning types (tags)",
+    "default_member_permissions": "0",
+    "options": [
+      {
+        "type": 1,
+        "name": "add",
+        "description": "Create or edit a tag",
+        "options": [
+          { "type": 3, "name": "key", "description": "Lowercase key, e.g. grindy", "required": true, "max_length": 32 },
+          { "type": 3, "name": "en", "description": "Name in English (required the first time)", "required": false, "max_length": 60 },
+          { "type": 3, "name": "pt", "description": "Nome em português", "required": false, "max_length": 60 },
+          { "type": 5, "name": "breaks100", "description": "Can this make 100% impossible? (triggers the app's heads-up)", "required": false }
+        ]
+      },
+      {
+        "type": 1,
+        "name": "remove",
+        "description": "Delete a tag (only if no game uses it)",
+        "options": [{ "type": 3, "name": "key", "description": "Tag key", "required": true, "max_length": 32 }]
+      },
+      { "type": 1, "name": "list", "description": "List all types and tags" }
+    ]
+  },
+  {
+    "name": "help",
+    "description": "How the warnings bot works",
+    "default_member_permissions": "0"
+  }
+]

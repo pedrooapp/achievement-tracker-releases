@@ -1,66 +1,63 @@
 # Warnings feed (broken / unobtainable achievements)
 
 `unobtainable_warnings.json` is read by the Achievement Tracker app about once an hour.
-It is edited **only by admins**, through Discord commands (or by hand on GitHub).
+It is edited **only by admins**, from the `#admins-flag` channel on Discord (or by hand on GitHub).
 
-## Discord commands
+## How it works
 
-Post one command per message in the admin channel. The bot reacts with ✅ (applied),
-❌ (error, with a reply explaining why) or ⛔ (you're not an admin). Changes reach the
-app within ~10 minutes (sync) + up to 1 hour (app refresh).
+1. An admin uses a slash command in `#admins-flag`. The bot answers **right away**
+   (Cloudflare Worker in `discord-worker/`) with the change it understood.
+2. Every ~10 minutes the sync (`.github/workflows/discord-warnings-sync.yml`) applies the
+   confirmed changes to the feed and reacts ✅ (or ❌ with the reason).
+3. The app picks up the new feed within the hour.
+
+## Slash commands
+
+| Command | What it does |
+|---|---|
+| `/game appid status en pt [shutdown] [scope]` | Flag a whole game (`en` required the first time) |
+| `/ach appid api_name type en pt [tags]` | Flag one achievement of a flagged game |
+| `/remove appid [api_name]` | Remove a game's warning, or one achievement |
+| `/show appid` | Show what is published (only you see it) |
+| `/tag add key en pt [breaks100]` | Create or rename your own type (tag) |
+| `/tag remove key` | Delete a tag (only if no game uses it) |
+| `/tag list` | List all types and tags |
+| `/help` | How it works |
+
+`status` / `type` suggest the built-in types and your tags as you type.
+
+Built-in types: `servers_shutdown`, `unobtainable_100`, `partial_broken`, `mp_required`, `dlc_required`.
+
+### Tags (your own types)
 
 ```
-!game <appid> <type> [shutdown=YYYY-MM-DD] [scope=text]
-en: Summary in English
-pt: Resumo em português
-```
-Flags the whole game (creates or updates it). `en:` is required the first time.
-
-```
-!ach <appid> <API_NAME> <type> [tags=a,b,c]
-en: Note in English
-pt: Nota em português
-```
-Flags one achievement (the game must be flagged first). `API_NAME` is the achievement's
-API name, as shown on SteamDB or in the app.
-
-```
-!remove <appid>               remove the whole game
-!remove <appid> <API_NAME>    remove one achievement
-!show <appid>                 show what is published
-!help                         list the commands
+/tag add key:grindy en:Very grindy pt:Muito grind breaks100:False
+/tag add key:speedrun en:Speedrun required pt:Exige speedrun breaks100:True
 ```
 
-Types: `servers_shutdown`, `unobtainable_100`, `partial_broken`, `mp_required`, `dlc_required`.
+- `breaks100: True` means the tag can make 100% impossible: the app then shows the
+  heads-up when a player opens that game with 0 achievements (players can turn each type
+  off in Settings).
+- After creating a tag, wait for the next sync (~10 min) before using it in `/game` or `/ach`.
+- Renaming a tag (`/tag add` again with the same key) updates every game that uses it.
 
 Every change raises the game's `revision`: players who already have achievements in that
 game get one notification per new revision.
 
-### Example
+## Text commands (still work)
 
-```
-!game 219150 servers_shutdown shutdown=2024-06-30
-en: Official multiplayer servers shut down; online/ranked achievements are unobtainable.
-pt: Servidores multiplayer oficiais encerrados; conquistas online/ranqueadas estão inatingíveis.
-```
-```
-!ach 219150 ACH_ONLINE_WIN servers_shutdown tags=shutdown,online,unobtainable
-en: Requires shut-down ranked matchmaking servers.
-pt: Exige servidores ranqueados encerrados.
-```
+`!game`, `!ach`, `!remove`, `!show`, `!tag add|remove`, `!tags`, `!help` — same as the slash
+commands, with `en:` / `pt:` on their own lines. They're applied on the next sync (no instant reply).
 
-## Setup (once)
+## Setup reference
 
-1. **Discord bot** — discord.com/developers/applications → New Application → Bot:
-   - Reset Token and copy it.
-   - Turn on **Message Content Intent** (needed to read the commands).
-   - OAuth2 → URL Generator: scope `bot`; permissions *View Channels*, *Read Message History*,
-     *Send Messages*, *Add Reactions*. Open the URL and add the bot to your server.
-   - Give the bot access to the admin channel only (it doesn't need the others).
-2. **IDs** — Discord → Settings → Advanced → Developer Mode. Right-click the channel →
-   Copy Channel ID; right-click each admin → Copy User ID (or a role → Copy Role ID).
-3. **GitHub** — this repository → Settings → Secrets and variables → Actions:
-   - Secret `DISCORD_BOT_TOKEN`
-   - Variables `DISCORD_CHANNEL_ID`, `DISCORD_ADMIN_USER_IDS` (comma-separated) and/or
-     `DISCORD_ADMIN_ROLE_ID`
-4. **Test** — post `!help` in the channel, then Actions → "Discord warnings sync" → Run workflow.
+- **GitHub** (this repo → Settings → Secrets and variables → Actions): secret `DISCORD_BOT_TOKEN`;
+  variables `DISCORD_CHANNEL_ID`, `DISCORD_ADMIN_USER_IDS` (comma-separated) and/or
+  `DISCORD_ADMIN_ROLE_ID`, `DISCORD_APPLICATION_ID`, `DISCORD_GUILD_ID`.
+- **Cloudflare Worker** (`discord-worker/`): `npx wrangler deploy`. Settings live in
+  `wrangler.toml` (no secrets: only Discord's *public* key). Keep `ADMIN_USER_IDS` in sync with
+  the GitHub variable.
+- **Discord Developer Portal** → General Information → *Interactions Endpoint URL* = the
+  Worker URL. Message Content Intent must stay on (for text commands).
+- **Slash commands**: after changing `discord-worker/commands.json`, run
+  Actions → "Register Discord commands".

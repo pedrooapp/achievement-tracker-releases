@@ -1,0 +1,15 @@
+# Cloudflare Worker do bot de avisos. Nada aqui é segredo (a chave do Discord é a PÚBLICA).
+# Deploy: npx wrangler deploy   (a primeira vez pede login na Cloudflare pelo navegador)
+name = "achievement-warnings-bot"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+DISCORD_PUBLIC_KEY = "6ad29209ac6c3e2c0d78a0631df3eec307cd8a785e7ca9959dfde443f32657e2"
+DISCORD_APPLICATION_ID = "1574481159566532658"
+# Mesmos admins da variável DISCORD_ADMIN_USER_IDS do GitHub (separados por vírgula).
+ADMIN_USER_IDS = "330805976192253952"
+ADMIN_ROLE_ID = ""
+# Canal lido pelo sync (#admins-flag): comandos que mudam o feed só valem aqui.
+ADMIN_CHANNEL_ID = "1574481789932675215"
+FEED_URL = "https://raw.githubusercontent.com/pedrooapp/achievement-tracker-releases/main/unobtainable_warnings.json"

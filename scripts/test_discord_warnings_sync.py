@@ -60,6 +60,45 @@ class ParseAndApply(unittest.TestCase):
         self.assertIn("!game", sync.apply_command(feed, sync.parse_command("!help"), 1))
 
 
+class Tags(unittest.TestCase):
+    def test_create_use_rename_and_remove_tag(self):
+        feed = {"games": {}}
+        # Tipo desconhecido até criar a tag.
+        with self.assertRaises(sync.CommandError):
+            sync.apply_command(feed, sync.parse_command("!game 10 grindy\nen: x"), 1)
+        sync.apply_command(feed, sync.parse_command("!tag add grindy breaks100=no\nen: Very grindy\npt: Muito grind"), 2)
+        self.assertEqual(feed["tags"]["grindy"], {"label_en": "Very grindy", "label_pt": "Muito grind", "breaks_100": False})
+        sync.apply_command(feed, sync.parse_command("!game 10 grindy\nen: Takes 200 hours."), 3)
+        self.assertEqual(feed["games"]["10"]["revision"], 1)
+        # Renomear a tag sobe a revisão de quem usa (o app mostra o nome novo).
+        sync.apply_command(feed, sync.parse_command("!tag add grindy\nen: Extremely grindy"), 4)
+        self.assertEqual((feed["tags"]["grindy"]["label_en"], feed["games"]["10"]["revision"]), ("Extremely grindy", 2))
+        self.assertIn("grindy", sync.apply_command(feed, sync.parse_command("!tags"), 5))
+        # Em uso: não apaga; depois de remover o jogo, apaga.
+        with self.assertRaises(sync.CommandError):
+            sync.apply_command(feed, sync.parse_command("!tag remove grindy"), 6)
+        sync.apply_command(feed, sync.parse_command("!remove 10"), 7)
+        sync.apply_command(feed, sync.parse_command("!tag remove grindy"), 8)
+        self.assertEqual(feed["tags"], {})
+
+    def test_tag_validation(self):
+        for text in ["!tag add servers_shutdown\nen: x", "!tag add Bad-Key\nen: x", "!tag add ok_key", "!tag add ok_key breaks100=maybe\nen: x"]:
+            with self.subTest(text=text), self.assertRaises(sync.CommandError):
+                sync.apply_command({"games": {}}, sync.parse_command(text), 1)
+
+
+class WorkerMessages(unittest.TestCase):
+    def test_reads_only_own_interaction_messages(self):
+        block = "✅ Queued:\n```text\n!game 5 mp_required\nen: Online only.\n```"
+        own = {"author": {"id": "app"}, "interaction_metadata": {"user": {"id": "u1"}}, "content": block}
+        cmd, user = sync.worker_command(own, "app")
+        self.assertEqual((cmd.name, cmd.args, cmd.en, user), ("game", ["5", "mp_required"], "Online only.", "u1"))
+        # Outro bot, sem interação ou sem bloco: ignorado.
+        self.assertIsNone(sync.worker_command({**own, "author": {"id": "other"}}, "app"))
+        self.assertIsNone(sync.worker_command({"author": {"id": "app"}, "content": block}, "app"))
+        self.assertIsNone(sync.worker_command({**own, "content": "hello"}, "app"))
+
+
 class FakeDiscord:
     """Canal simulado: guarda reações e respostas."""
 
@@ -94,13 +133,19 @@ class RunFlow(unittest.TestCase):
             {"id": "3", "author": {"id": "u-role", "username": "mod"}, "content": "!ach 219150 ONLINE servers_shutdown\nen: Online only."},
             {"id": "4", "author": {"id": "u-admin", "username": "pedro"}, "content": "!game 777 mp_required"},  # erro: sem en:
             {"id": "5", "author": {"id": "u-admin", "username": "pedro"}, "content": "good morning"},
+            # Resposta do Worker a um /ach de um admin.
+            {"id": "6", "author": {"id": "app-1", "bot": True}, "interaction_metadata": {"user": {"id": "u-admin"}},
+             "content": "✅ Queued\n```text\n!ach 219150 RANKED servers_shutdown\nen: Ranked only.\n```"},
+            # Mesmo formato, mas de quem não é admin.
+            {"id": "7", "author": {"id": "app-1", "bot": True}, "interaction_metadata": {"user": {"id": "u-random"}},
+             "content": "```text\n!remove 219150\n```"},
         ]
         fake = FakeDiscord(msgs)
         with tempfile.TemporaryDirectory() as tmp:
             feed_path, state_path = Path(tmp, "feed.json"), Path(tmp, "state.json")
             os.environ.update(
                 DISCORD_BOT_TOKEN="t", DISCORD_CHANNEL_ID="c", DISCORD_ADMIN_USER_IDS="u-admin",
-                DISCORD_ADMIN_ROLE_ID="admin-role", FEED_PATH=str(feed_path), STATE_PATH=str(state_path),
+                DISCORD_ADMIN_ROLE_ID="admin-role", DISCORD_APPLICATION_ID="app-1", FEED_PATH=str(feed_path), STATE_PATH=str(state_path),
             )
             original = sync.Discord
             sync.Discord = fake
@@ -111,11 +156,12 @@ class RunFlow(unittest.TestCase):
 
             feed = json.loads(feed_path.read_text(encoding="utf8"))
             game = feed["games"]["219150"]
-            self.assertEqual(game["revision"], 2)                      # !game + !ach (do cargo admin)
+            self.assertEqual(game["revision"], 3)                      # !game + !ach (cargo admin) + /ach (Worker)
             self.assertIn("ONLINE", game["achievements"])
+            self.assertIn("RANKED", game["achievements"])
             self.assertNotIn("777", feed["games"])                     # comando com erro não grava nada
-            self.assertEqual(json.loads(state_path.read_text())["last_message_id"], "5")
-            self.assertEqual(fake.reactions, [("1", "✅"), ("2", "⛔"), ("3", "✅"), ("4", "❌")])
+            self.assertEqual(json.loads(state_path.read_text())["last_message_id"], "7")
+            self.assertEqual(fake.reactions, [("1", "✅"), ("2", "⛔"), ("3", "✅"), ("4", "❌"), ("6", "✅"), ("7", "⛔")])
             self.assertTrue(fake.replies and fake.replies[0][0] == "4")
 
             # 2ª rodada: nada novo → nada muda e ninguém é respondido de novo.
