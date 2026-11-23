@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": 1795464670,
+  "updated_at": 1795464757,
   "games": {
     "366260": {
       "revision": 2,
@@ -35,6 +35,20 @@
       },
       "summary_en": "Servers are shutting down at Jan 31st, 2027",
       "summary_pt": ""
+    },
+    "1076280": {
+      "revision": 1,
+      "status": "unobtainable_100",
+      "summary_en": "One or more achievements can't be unlocked, so 100% isn't possible right now.",
+      "summary_pt": "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
+      "achievements": {
+        "BANDIT_DEADEYE": {
+          "type": "unobtainable_100",
+          "tags": [],
+          "note_en": "",
+          "note_pt": ""
+        }
+      }
     }
   }
 }
