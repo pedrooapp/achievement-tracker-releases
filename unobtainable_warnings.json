@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795477253,
+  "updated_at": 1795477273,
   "games": {
     "366260": {
       "revision": 2,
@@ -104,11 +104,19 @@
       }
     },
     "571740": {
-      "revision": 1,
+      "revision": 2,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
         "ACH_FACTORY": {
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_TOP_SECRET_FACTORY": {
           "tags": [
             "dlc_required"
           ],
