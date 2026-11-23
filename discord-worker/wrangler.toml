@@ -13,3 +13,4 @@ ADMIN_ROLE_ID = ""
 # Canal lido pelo sync (#admins-flag): comandos que mudam o feed só valem aqui.
 ADMIN_CHANNEL_ID = "1574481789932675215"
 FEED_URL = "https://raw.githubusercontent.com/pedrooapp/achievement-tracker-releases/main/unobtainable_warnings.json"
+GITHUB_REPO = "pedrooapp/achievement-tracker-releases"

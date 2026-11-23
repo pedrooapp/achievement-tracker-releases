@@ -7,8 +7,10 @@ It is edited **only by admins**, from the `#admins-flag` channel on Discord (or 
 
 1. An admin uses a slash command in `#admins-flag`. The bot answers **right away**
    (Cloudflare Worker in `discord-worker/`) with the change it understood.
-2. Every ~10 minutes the sync (`.github/workflows/discord-warnings-sync.yml`) applies the
-   confirmed changes to the feed and reacts ✅ (or ❌ with the reason).
+2. The Worker starts the sync (`.github/workflows/discord-warnings-sync.yml`) right away, so
+   the change is in the feed in about 1 minute and the message gets ✅ (or ❌ with the reason).
+   Without the `GITHUB_DISPATCH_TOKEN` secret it waits for the GitHub schedule (every ~10 min,
+   but GitHub may delay or skip scheduled runs for hours).
 3. The app picks up the new feed within the hour.
 
 ## Slash commands
@@ -54,7 +56,9 @@ commands, with `en:` / `pt:` on their own lines. They're applied on the next syn
 - **GitHub** (this repo → Settings → Secrets and variables → Actions): secret `DISCORD_BOT_TOKEN`;
   variables `DISCORD_CHANNEL_ID`, `DISCORD_ADMIN_USER_IDS` (comma-separated) and/or
   `DISCORD_ADMIN_ROLE_ID`, `DISCORD_APPLICATION_ID`, `DISCORD_GUILD_ID`.
-- **Cloudflare Worker** (`discord-worker/`): `npx wrangler deploy`. Settings live in
+- **Cloudflare Worker** (`discord-worker/`): `npx wrangler deploy`. Instant sync: create a
+  fine-grained GitHub token for this repository only, with **Actions: Read and write**, then run
+  `npx wrangler secret put GITHUB_DISPATCH_TOKEN` in `discord-worker/` and paste it. Settings live in
   `wrangler.toml` (no secrets: only Discord's *public* key). Keep `ADMIN_USER_IDS` in sync with
   the GitHub variable.
 - **Discord Developer Portal** → General Information → *Interactions Endpoint URL* = the

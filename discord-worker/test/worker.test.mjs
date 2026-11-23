@@ -87,3 +87,41 @@ test("texto com ``` não quebra o bloco", () => {
   const out = toTextCommand("game", null, { appid: "5", status: "mp_required", en: "bad ``` text" }, FEED);
   assert.equal(out, "!game 5 mp_required\nen: bad ''' text");
 });
+
+async function signed(payload) {
+  const body = JSON.stringify(payload);
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: "Ed25519" }, privateKey, new TextEncoder().encode(timestamp + body)));
+  return new Request("https://worker.test/", { method: "POST", body, headers: { "X-Signature-Ed25519": hex(sig), "X-Signature-Timestamp": timestamp } });
+}
+
+test("com GITHUB_DISPATCH_TOKEN, comando que altera o feed dispara o sync", async () => {
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), init });
+    return String(url).includes("api.github.com") ? new Response(null, { status: 204 }) : new Response(JSON.stringify(FEED));
+  };
+  try {
+    const waits = [];
+    const ctx = { waitUntil: (p) => waits.push(p) };
+    const e = { ...env, GITHUB_DISPATCH_TOKEN: "t", GITHUB_REPO: "o/r" };
+    const res = await (await worker.fetch(await signed(cmd("remove", [opt("appid", "219150")])), e, ctx)).json();
+    assert.match(res.data.content, /about 1 minute/);
+    assert.equal(waits.length, 1);
+    await Promise.all(waits);
+    const dispatch = calls.find((c) => c.url.includes("/dispatches"));
+    assert.ok(dispatch, "chamou workflow_dispatch");
+    assert.equal(dispatch.init.headers.Authorization, "Bearer t");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("sem token, não dispara e avisa ~10 min", async () => {
+  const waits = [];
+  const ctx = { waitUntil: (p) => waits.push(p) };
+  const res = await (await worker.fetch(await signed(cmd("remove", [opt("appid", "219150")])), env, ctx)).json();
+  assert.match(res.data.content, /~10 min/);
+  assert.equal(waits.length, 0);
+});

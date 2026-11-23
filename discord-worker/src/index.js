@@ -5,7 +5,10 @@
 // lê esse bloco, aplica no unobtainable_warnings.json e reage com ✅. O app lê o feed de hora em hora.
 //
 // Variáveis (wrangler.toml, nenhuma secreta): DISCORD_PUBLIC_KEY, DISCORD_APPLICATION_ID,
-// ADMIN_USER_IDS (vírgulas), ADMIN_ROLE_ID (opcional), ADMIN_CHANNEL_ID, FEED_URL.
+// ADMIN_USER_IDS (vírgulas), ADMIN_ROLE_ID (opcional), ADMIN_CHANNEL_ID, FEED_URL, GITHUB_REPO.
+// Secret opcional GITHUB_DISPATCH_TOKEN (fine-grained, só "Actions: write" neste repositório):
+// depois de cada comando que altera o feed, o Worker dispara o sync na hora em vez de esperar o
+// agendamento do GitHub (que pode atrasar horas).
 
 const BUILTIN = ["servers_shutdown", "unobtainable_100", "partial_broken", "mp_required", "dlc_required"];
 const TAG_KEY = /^[a-z][a-z0-9_]{1,31}$/;
@@ -160,7 +163,25 @@ function isAdmin(interaction, env) {
   return Boolean(env.ADMIN_ROLE_ID && interaction.member?.roles?.includes(env.ADMIN_ROLE_ID));
 }
 
-async function handleCommand(interaction, env) {
+/** Dispara o workflow de sync (workflow_dispatch). Espera um pouco para a resposta já estar no canal. */
+export async function triggerSync(env, delayMs = 3000) {
+  if (!env.GITHUB_DISPATCH_TOKEN || !env.GITHUB_REPO) return false;
+  if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+  const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/discord-warnings-sync.yml/dispatches`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "achievement-warnings-bot",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    body: JSON.stringify({ ref: "main" }),
+  });
+  if (!res.ok) console.log(`sync dispatch failed: HTTP ${res.status}`);
+  return res.ok;
+}
+
+async function handleCommand(interaction, env, ctx) {
   const { name } = interaction.data;
   const { sub, values } = optionsOf(interaction.data);
   if (name === "help") return reply(HELP);
@@ -191,7 +212,10 @@ async function handleCommand(interaction, env) {
   const command = toTextCommand(name, sub, values, feed);
   const user = interaction.member?.user?.id ?? interaction.user?.id;
   // Visível no canal (não efêmera): é esta mensagem que o sync aplica.
-  return reply(`✅ **Queued** by <@${user}> — published on the next sync (~10 min).\n\`\`\`text\n${command}\n\`\`\``, false);
+  const instant = Boolean(env.GITHUB_DISPATCH_TOKEN && env.GITHUB_REPO);
+  if (instant) ctx?.waitUntil(triggerSync(env));
+  const when = instant ? "published in about 1 minute" : "published on the next sync (~10 min)";
+  return reply(`✅ **Queued** by <@${user}> — ${when}.\n\`\`\`text\n${command}\n\`\`\``, false);
 }
 
 async function handleAutocomplete(interaction, env) {
@@ -207,7 +231,7 @@ async function handleAutocomplete(interaction, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method !== "POST") return new Response("Achievement Tracker warnings bot", { status: 200 });
     const body = await request.text();
     if (!(await verify(request, body, env.DISCORD_PUBLIC_KEY))) return new Response("invalid request signature", { status: 401 });
@@ -215,7 +239,7 @@ export default {
     const interaction = JSON.parse(body);
     try {
       if (interaction.type === PING) return json({ type: PONG });
-      if (interaction.type === COMMAND) return await handleCommand(interaction, env);
+      if (interaction.type === COMMAND) return await handleCommand(interaction, env, ctx);
       if (interaction.type === AUTOCOMPLETE) return await handleAutocomplete(interaction, env);
       return reply("Unsupported interaction.");
     } catch (e) {
