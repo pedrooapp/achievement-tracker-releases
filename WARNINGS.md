@@ -17,8 +17,8 @@ It is edited **only by admins**, from the `#admins-flag` channel on Discord (or 
 
 | Command | What it does |
 |---|---|
-| `/game appid status en pt [shutdown] [scope]` | Flag a whole game (`en` required the first time) |
-| `/ach appid api_name type en pt [tags]` | Flag one achievement of a flagged game |
+| `/game appid status [en] [pt] [shutdown] [scope]` | Flag a whole game (without `en`, a default summary is used) |
+| `/ach appid api_name type [en] [pt] [tags]` | Flag one achievement (flags the game too if needed) |
 | `/remove appid [api_name]` | Remove a game's warning, or one achievement |
 | `/show appid` | Show what is published (only you see it) |
 | `/tag add key en pt [breaks100]` | Create or rename your own type (tag) |

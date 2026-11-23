@@ -150,10 +150,10 @@ export function toTextCommand(name, sub, values, feed) {
 
 const HELP = [
   "**Achievement Tracker — warnings**",
-  "`/game` flag a whole game · `/ach` flag one achievement · `/remove` remove a game or achievement",
+  "`/game` flag a whole game (en/pt optional) · `/ach` flag one achievement (flags the game too) · `/remove` remove a game or achievement",
   "`/show` see what's published · `/tag add|remove|list` manage your own types (tags)",
   `Built-in types: ${BUILTIN.join(", ")}`,
-  "Changes are confirmed here right away and published on the next sync (~10 min); the app picks them up within the hour.",
+  "Changes are published in about 1 minute (✅ on the message, or ❌ with the reason). In the app: Settings → Sync now, or it updates on its own within the hour.",
 ].join("\n");
 
 function isAdmin(interaction, env) {

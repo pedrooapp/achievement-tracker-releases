@@ -159,6 +159,41 @@ def _touch(game: dict) -> None:
     game["revision"] = int(game.get("revision", 0)) + 1
 
 
+# Resumo padrão quando o admin não escreve `en:` (o app mostra isto no aviso do jogo).
+DEFAULT_SUMMARY = {
+    "servers_shutdown": (
+        "Official servers were shut down; some achievements can no longer be unlocked.",
+        "Os servidores oficiais foram desligados; algumas conquistas não podem mais ser desbloqueadas.",
+    ),
+    "unobtainable_100": (
+        "One or more achievements can't be unlocked, so 100% isn't possible right now.",
+        "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
+    ),
+    "partial_broken": (
+        "Some achievements are reported as buggy or hard to unlock.",
+        "Algumas conquistas estão com bug ou difíceis de desbloquear.",
+    ),
+    "mp_required": ("Some achievements need multiplayer.", "Algumas conquistas exigem multiplayer."),
+    "dlc_required": ("Some achievements need a DLC.", "Algumas conquistas exigem uma DLC."),
+}
+
+
+def default_summary(feed: dict, kind: str) -> tuple[str, str]:
+    if kind in DEFAULT_SUMMARY:
+        return DEFAULT_SUMMARY[kind]
+    tag = feed.get("tags", {}).get(kind, {})
+    en = tag.get("label_en") or kind
+    return (f"Flagged: {en}.", f"Marcado: {tag.get('label_pt') or en}.")
+
+
+def _new_game(feed: dict, app_id: str, status: str) -> dict:
+    en, pt = default_summary(feed, status)
+    game = {"revision": 0, "status": status, "summary_en": en, "summary_pt": pt, "achievements": {}}
+    if status == "servers_shutdown":
+        game["shutdown_info"] = {"is_shutdown": True, "shutdown_date": None, "scope": "full_game_or_online_mode"}
+    return game
+
+
 def apply_command(feed: dict, cmd: Command, now: int) -> str | None:
     """Aplica no feed (tudo ou nada). Devolve um texto para responder (ex.: !show) ou None."""
     work = json.loads(json.dumps(feed))
@@ -204,7 +239,11 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
         if cmd.pt:
             game["summary_pt"] = cmd.pt
         if not game.get("summary_en"):
-            raise CommandError("Add a line `en: <summary in English>` (required for new games).")
+            # Sem `en:`: resumo padrão do tipo (nos dois idiomas, se `pt:` também faltar).
+            en, pt = default_summary(feed, status)
+            game["summary_en"] = en
+            if not game.get("summary_pt"):
+                game["summary_pt"] = pt
         game.setdefault("summary_pt", "")
         game.setdefault("achievements", {})
         _touch(game)
@@ -214,7 +253,8 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
             raise CommandError("Usage: `!ach <appid> <API_NAME> <type> [tags=a,b]` + `en:` / `pt:` lines")
         app_id, api_name, kind = _app_id(cmd.args[0]), cmd.args[1], _flag(cmd.args[2], feed)
         if app_id not in games:
-            raise CommandError(f"Flag the game first with `!game {app_id} <status>`.")
+            # Jogo ainda sem aviso: cria com o mesmo tipo da conquista (dá para mudar com !game).
+            games[app_id] = _new_game(feed, app_id, kind)
         game = games[app_id]
         ach = game.setdefault("achievements", {}).setdefault(api_name, {})
         ach["type"] = kind
@@ -225,8 +265,7 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
             ach["note_en"] = cmd.en
         if cmd.pt:
             ach["note_pt"] = cmd.pt
-        if not ach.get("note_en"):
-            raise CommandError("Add a line `en: <note in English>` (required for new achievements).")
+        ach.setdefault("note_en", "")
         ach.setdefault("note_pt", "")
         _touch(game)
 
@@ -276,7 +315,7 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
             if cmd.pt:
                 tag["label_pt"] = cmd.pt
             if not tag.get("label_en"):
-                raise CommandError("Add a line `en: <name in English>` (required for new tags).")
+                tag["label_en"] = key.replace("_", " ").capitalize()
             tag.setdefault("label_pt", "")
             if "breaks100" in cmd.options:
                 tag["breaks_100"] = _yes(cmd.options["breaks100"])

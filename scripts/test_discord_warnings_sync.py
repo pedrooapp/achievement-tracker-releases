@@ -45,14 +45,29 @@ class ParseAndApply(unittest.TestCase):
         for text, needle in [
             ("!game abc servers_shutdown\nen: x", "AppID"),
             ("!game 10 broken\nen: x", "Unknown type"),
-            ("!game 10 mp_required", "en:"),
             ("!game 10 servers_shutdown shutdown=30/06/2024\nen: x", "YYYY-MM-DD"),
-            ("!ach 10 X dlc_required\nen: x", "Flag the game first"),
             ("!frobnicate", "Unknown command"),
         ]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError) as ctx:
                 sync.apply_command(feed, sync.parse_command(text), 1)
             self.assertIn(needle, str(ctx.exception))
+
+    def test_defaults_without_en(self):
+        feed = {"games": {}}
+        # /game sem en: -> resumo padrão nos dois idiomas.
+        sync.apply_command(feed, sync.parse_command("!game 10 mp_required"), 1)
+        self.assertEqual(feed["games"]["10"]["summary_en"], "Some achievements need multiplayer.")
+        self.assertTrue(feed["games"]["10"]["summary_pt"])
+        # /ach num jogo sem aviso -> cria o jogo com o tipo da conquista.
+        sync.apply_command(feed, sync.parse_command("!ach 20 X unobtainable_100"), 2)
+        game = feed["games"]["20"]
+        self.assertEqual((game["status"], game["revision"], game["achievements"]["X"]["type"]), ("unobtainable_100", 1, "unobtainable_100"))
+        # /tag add sem en: -> nome a partir da chave.
+        sync.apply_command(feed, sync.parse_command("!tag add very_grindy"), 3)
+        self.assertEqual(feed["tags"]["very_grindy"]["label_en"], "Very grindy")
+        # Tag customizada como status sem en: -> "Flagged: <nome>".
+        sync.apply_command(feed, sync.parse_command("!game 30 very_grindy"), 4)
+        self.assertEqual(feed["games"]["30"]["summary_en"], "Flagged: Very grindy.")
 
     def test_show_and_help(self):
         feed = {"games": {}}
@@ -82,7 +97,7 @@ class Tags(unittest.TestCase):
         self.assertEqual(feed["tags"], {})
 
     def test_tag_validation(self):
-        for text in ["!tag add servers_shutdown\nen: x", "!tag add Bad-Key\nen: x", "!tag add ok_key", "!tag add ok_key breaks100=maybe\nen: x"]:
+        for text in ["!tag add servers_shutdown\nen: x", "!tag add Bad-Key\nen: x", "!tag add ok_key breaks100=maybe\nen: x"]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError):
                 sync.apply_command({"games": {}}, sync.parse_command(text), 1)
 
@@ -131,7 +146,7 @@ class RunFlow(unittest.TestCase):
             {"id": "1", "author": {"id": "u-admin", "username": "pedro"}, "content": "!game 219150 servers_shutdown\nen: Servers off."},
             {"id": "2", "author": {"id": "u-random", "username": "x"}, "content": "!remove 219150"},
             {"id": "3", "author": {"id": "u-role", "username": "mod"}, "content": "!ach 219150 ONLINE servers_shutdown\nen: Online only."},
-            {"id": "4", "author": {"id": "u-admin", "username": "pedro"}, "content": "!game 777 mp_required"},  # erro: sem en:
+            {"id": "4", "author": {"id": "u-admin", "username": "pedro"}, "content": "!game 777 broken"},  # erro: tipo desconhecido
             {"id": "5", "author": {"id": "u-admin", "username": "pedro"}, "content": "good morning"},
             # Resposta do Worker a um /ach de um admin.
             {"id": "6", "author": {"id": "app-1", "bot": True}, "interaction_metadata": {"user": {"id": "u-admin"}},
