@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": 1795464216,
+  "updated_at": 1795464670,
   "games": {
     "366260": {
       "revision": 2,
@@ -25,7 +25,7 @@
       }
     },
     "1063730": {
-      "revision": 1,
+      "revision": 2,
       "achievements": {},
       "status": "servers_shutdown",
       "shutdown_info": {
