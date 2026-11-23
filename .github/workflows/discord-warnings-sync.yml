@@ -1,0 +1,53 @@
+# Atualiza unobtainable_warnings.json a partir de comandos no canal de admins do Discord.
+# Fica no repositório PÚBLICO de releases: minutos de Actions são gratuitos aqui e o próprio
+# GITHUB_TOKEN grava o feed (sem PAT).
+#
+# Configuração (Settings → Secrets and variables → Actions deste repositório):
+#   Secret   DISCORD_BOT_TOKEN        token do bot (Discord Developer Portal → Bot → Reset Token)
+#   Variable DISCORD_CHANNEL_ID       ID do canal de administração
+#   Variable DISCORD_ADMIN_USER_IDS   IDs de usuário autorizados, separados por vírgula
+#   Variable DISCORD_ADMIN_ROLE_ID    (opcional) ID do cargo de admins
+# Sem o token/canal o job só avisa e termina. Comandos: veja WARNINGS.md.
+name: Discord warnings sync
+
+on:
+  schedule:
+    # O GitHub pode atrasar execuções agendadas em alguns minutos.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: discord-warnings-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ler comandos do Discord e atualizar o feed
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
+          DISCORD_ADMIN_USER_IDS: ${{ vars.DISCORD_ADMIN_USER_IDS }}
+          DISCORD_ADMIN_ROLE_ID: ${{ vars.DISCORD_ADMIN_ROLE_ID }}
+          FEED_PATH: unobtainable_warnings.json
+          STATE_PATH: discord_sync_state.json
+        run: python3 scripts/discord_warnings_sync.py
+
+      - name: Publicar a mudança
+        run: |
+          git add unobtainable_warnings.json discord_sync_state.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Nada novo."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update warnings from Discord"
+          git push
