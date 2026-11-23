@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795477273,
+  "updated_at": 1795477402,
   "games": {
     "366260": {
       "revision": 2,
@@ -126,6 +126,23 @@
         }
       },
       "status": "dlc_required"
+    },
+    "4000": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "GMA_PLAYWITH_GARRY": {
+          "obtainability": "possibly_obtainable",
+          "tags": [
+            "developer_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "partial_broken"
+        }
+      },
+      "status": "partial_broken"
     }
   },
   "tags": {
