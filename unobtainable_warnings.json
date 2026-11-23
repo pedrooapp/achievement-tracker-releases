@@ -1,26 +1,19 @@
 {
-  "version": 1,
+  "version": 2,
   "updated_at": 1795464815,
   "games": {
     "366260": {
       "revision": 2,
       "status": "unobtainable_100",
-      "shutdown_info": {
-        "is_shutdown": false,
-        "shutdown_date": null,
-        "scope": null
-      },
       "summary_en": "[TEST] One achievement (MS2_015) is reported as broken, so 100% can't be reached right now.",
       "summary_pt": "[TESTE] Uma conquista (MS2_015) está quebrada, então o 100% não pode ser alcançado no momento.",
       "achievements": {
         "MS2_015": {
           "type": "unobtainable_100",
-          "tags": [
-            "broken",
-            "unobtainable"
-          ],
+          "tags": [],
           "note_en": "[TEST] Reported as broken: doesn't unlock.",
-          "note_pt": "[TESTE] Reportada como quebrada: não desbloqueia."
+          "note_pt": "[TESTE] Reportada como quebrada: não desbloqueia.",
+          "obtainability": "unobtainable"
         }
       }
     },
@@ -34,7 +27,11 @@
         "scope": "Entire game"
       },
       "summary_en": "Servers are shutting down at Jan 31st, 2027",
-      "summary_pt": ""
+      "summary_pt": "",
+      "shutdown": {
+        "date": "2027-01-31",
+        "scope": "Entire game"
+      }
     },
     "1076280": {
       "revision": 2,
@@ -46,13 +43,14 @@
           "type": "unobtainable_100",
           "tags": [],
           "note_en": "",
-          "note_pt": ""
+          "note_pt": "",
+          "obtainability": "unobtainable"
         }
       }
     },
     "1172620": {
       "revision": 2,
-      "status": "partial_broken",
+      "status": "unobtainable_100",
       "summary_en": "One or more achievements can't be unlocked, so 100% isn't possible right now.",
       "summary_pt": "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
       "achievements": {
@@ -60,7 +58,8 @@
           "type": "unobtainable_100",
           "tags": [],
           "note_en": "",
-          "note_pt": ""
+          "note_pt": "",
+          "obtainability": "unobtainable"
         }
       }
     },
@@ -69,14 +68,15 @@
       "achievements": {},
       "status": "unobtainable_100",
       "summary_en": "test",
-      "summary_pt": "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento."
+      "summary_pt": "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
+      "obtainability": "unobtainable"
     }
   },
   "tags": {
     "teste": {
       "label_en": "Teste",
       "label_pt": "",
-      "breaks_100": true
+      "breaks_100": false
     }
   }
 }

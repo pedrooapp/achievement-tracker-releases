@@ -14,100 +14,185 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import discord_warnings_sync as sync  # noqa: E402
 
 
-class ParseAndApply(unittest.TestCase):
-    def test_parse_game_with_texts_and_options(self):
-        cmd = sync.parse_command('!game 219150 servers_shutdown shutdown=2024-06-30 scope="online mode"\nen: Servers off.\npt: Servidores desligados.')
-        self.assertEqual((cmd.name, cmd.args), ("game", ["219150", "servers_shutdown"]))
-        self.assertEqual(cmd.options, {"shutdown": "2024-06-30", "scope": "online mode"})
+def run(feed, text, now=1):
+    return sync.apply_command(feed, sync.parse_command(text), now)
+
+
+class Parse(unittest.TestCase):
+    def test_parse_with_texts_and_options(self):
+        cmd = sync.parse_command('!shutdown 219150 2024-06-30 scope="online mode"\nen: Servers off.\npt: Servidores desligados.')
+        self.assertEqual((cmd.name, cmd.args), ("shutdown", ["219150", "2024-06-30"]))
+        self.assertEqual(cmd.options, {"scope": "online mode"})
         self.assertEqual((cmd.en, cmd.pt), ("Servers off.", "Servidores desligados."))
         self.assertIsNone(sync.parse_command("just chatting about the game"))
 
-    def test_game_ach_remove_cycle_bumps_revision(self):
-        feed = {"version": 1, "updated_at": 0, "games": {}}
-        sync.apply_command(feed, sync.parse_command("!game 219150 servers_shutdown shutdown=2024-06-30\nen: Servers off."), 100)
-        game = feed["games"]["219150"]
-        self.assertEqual((game["revision"], game["status"], game["shutdown_info"]["shutdown_date"]), (1, "servers_shutdown", "2024-06-30"))
 
-        sync.apply_command(feed, sync.parse_command("!ach 219150 ACH_DLC_BOSS dlc_required tags=dlc,missable\nen: Needs the DLC.\npt: Exige a DLC."), 200)
-        game = feed["games"]["219150"]
-        ach = game["achievements"]["ACH_DLC_BOSS"]
-        self.assertEqual((ach["type"], ach["tags"], ach["note_pt"]), ("dlc_required", ["dlc", "missable"], "Exige a DLC."))
-        self.assertEqual((game["revision"], feed["updated_at"]), (2, 200))
-
-        sync.apply_command(feed, sync.parse_command("!remove 219150 ACH_DLC_BOSS"), 300)
-        game = feed["games"]["219150"]
-        self.assertEqual((game["achievements"], game["revision"]), ({}, 3))
-        sync.apply_command(feed, sync.parse_command("!remove 219150"), 400)
-        self.assertEqual(feed["games"], {})
-
-    def test_errors_are_explained(self):
+class Obtainability(unittest.TestCase):
+    def test_ach_obtainability_and_tags(self):
         feed = {"games": {}}
+        run(feed, "!ach 10 BOSS unobtainable tags=mp_required,date_sensitive\nen: Event is over.", 100)
+        game = feed["games"]["10"]
+        ach = game["achievements"]["BOSS"]
+        self.assertEqual((ach["obtainability"], ach["tags"], ach["note_en"]), ("unobtainable", ["mp_required", "date_sensitive"], "Event is over."))
+        self.assertEqual((game["revision"], feed["version"], feed["updated_at"]), (1, 2, 100))
+        # Campos antigos para versões antigas do app.
+        self.assertEqual((ach["type"], game["status"]), ("unobtainable_100", "unobtainable_100"))
+
+        run(feed, "!ach 10 BOSS possibly_obtainable add=unavailable del=date_sensitive", 200)
+        ach = feed["games"]["10"]["achievements"]["BOSS"]
+        self.assertEqual((ach["obtainability"], ach["tags"], ach["type"]), ("possibly_obtainable", ["mp_required", "unavailable"], "partial_broken"))
+        self.assertEqual(feed["games"]["10"]["status"], "partial_broken")
+
+        # Tira a obtenção: só sobram as tags (nunca notificam).
+        run(feed, "!ach 10 BOSS none", 300)
+        ach = feed["games"]["10"]["achievements"]["BOSS"]
+        self.assertNotIn("obtainability", ach)
+        self.assertEqual((ach["type"], feed["games"]["10"]["status"], feed["games"]["10"]["revision"]), ("mp_required", "mp_required", 3))
+
+    def test_new_tags_are_created_on_the_fly(self):
+        feed = {"games": {}}
+        run(feed, "!ach 10 X add=needs-coop,mp_required")
+        self.assertEqual(feed["games"]["10"]["achievements"]["X"]["tags"], ["needs_coop", "mp_required"])
+        self.assertEqual(feed["tags"]["needs_coop"]["label_en"], "Needs coop")
+        self.assertNotIn("mp_required", feed["tags"], "oficiais não precisam de nome")
+
+    def test_empty_achievement_is_removed(self):
+        feed = {"games": {}}
+        run(feed, "!ach 10 X tags=dlc_required")
+        run(feed, "!ach 10 X del=dlc_required")
+        self.assertEqual(feed["games"]["10"]["achievements"], {})
+
+    def test_legacy_type_words_still_work(self):
+        feed = {"games": {}}
+        run(feed, "!ach 20 A unobtainable_100")
+        run(feed, "!ach 20 B partial_broken")
+        run(feed, "!ach 20 C dlc_required")
+        run(feed, "!ach 20 D servers_shutdown")
+        a = feed["games"]["20"]["achievements"]
+        self.assertEqual(a["A"]["obtainability"], "unobtainable")
+        self.assertEqual(a["B"]["obtainability"], "broken_but_obtainable")
+        self.assertEqual((a["C"].get("obtainability"), a["C"]["tags"]), (None, ["dlc_required"]))
+        self.assertTrue(a["D"]["shutdown"])
+
+
+class Shutdown(unittest.TestCase):
+    def test_shutdown_with_date_now_and_remove(self):
+        feed = {"games": {}}
+        run(feed, '!shutdown 30 2027-01-31 scope="Online mode" achievements=RANKED,COOP\nen: Servers close on Jan 31.')
+        game = feed["games"]["30"]
+        self.assertEqual(game["shutdown"], {"date": "2027-01-31", "scope": "Online mode"})
+        self.assertTrue(game["achievements"]["RANKED"]["shutdown"] and game["achievements"]["COOP"]["shutdown"])
+        self.assertEqual(game["summary_en"], "Servers close on Jan 31.")
+        self.assertEqual((game["status"], game["shutdown_info"]["shutdown_date"]), ("servers_shutdown", "2027-01-31"))
+        self.assertEqual(game["achievements"]["RANKED"]["type"], "servers_shutdown")
+
+        run(feed, "!shutdown 30 now")
+        self.assertEqual(feed["games"]["30"]["shutdown"]["date"], None, "já desligado, data desconhecida")
+        self.assertEqual(feed["games"]["30"]["shutdown"]["scope"], "Online mode", "scope mantido")
+
+        run(feed, "!shutdown 30 remove")
+        self.assertNotIn("shutdown", feed["games"]["30"])
+        self.assertNotIn("shutdown_info", feed["games"]["30"])
+        self.assertEqual(feed["games"]["30"]["revision"], 3)
+
+    def test_legacy_game_status(self):
+        feed = {"games": {}}
+        run(feed, "!game 40 servers_shutdown shutdown=2024-06-30\nen: Off.")
+        self.assertEqual(feed["games"]["40"]["shutdown"]["date"], "2024-06-30")
+        run(feed, "!game 41 unobtainable_100")
+        self.assertEqual(feed["games"]["41"]["obtainability"], "unobtainable")
+        with self.assertRaises(sync.CommandError) as ctx:
+            run(feed, "!game 42 mp_required")
+        self.assertIn("tags go on achievements", str(ctx.exception))
+
+
+class Errors(unittest.TestCase):
+    def test_errors_are_explained(self):
         for text, needle in [
-            ("!game abc servers_shutdown\nen: x", "AppID"),
-            ("!game 10 broken\nen: x", "Unknown type"),
-            ("!game 10 servers_shutdown shutdown=30/06/2024\nen: x", "YYYY-MM-DD"),
+            ("!ach abc X unobtainable", "AppID"),
+            ("!ach 10 X obtainability=gone", "Unknown obtainability"),
+            ("!ach 10 X tags=Bad!", "lowercase"),
+            ("!ach 10 X tags=unobtainable", "not a tag"),
+            ("!shutdown 10 30/06/2024", "YYYY-MM-DD"),
+            ("!shutdown 10 remove", "no shutdown"),
             ("!frobnicate", "Unknown command"),
         ]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError) as ctx:
-                sync.apply_command(feed, sync.parse_command(text), 1)
+                run({"games": {}}, text)
             self.assertIn(needle, str(ctx.exception))
 
-    def test_defaults_without_en(self):
+    def test_failed_command_changes_nothing(self):
         feed = {"games": {}}
-        # /game sem en: -> resumo padrão nos dois idiomas.
-        sync.apply_command(feed, sync.parse_command("!game 10 mp_required"), 1)
-        self.assertEqual(feed["games"]["10"]["summary_en"], "Some achievements need multiplayer.")
-        self.assertTrue(feed["games"]["10"]["summary_pt"])
-        # /ach num jogo sem aviso -> cria o jogo com o tipo da conquista.
-        sync.apply_command(feed, sync.parse_command("!ach 20 X unobtainable_100"), 2)
-        game = feed["games"]["20"]
-        self.assertEqual((game["status"], game["revision"], game["achievements"]["X"]["type"]), ("unobtainable_100", 1, "unobtainable_100"))
-        # /tag add sem en: -> nome a partir da chave.
-        sync.apply_command(feed, sync.parse_command("!tag add very_grindy"), 3)
-        self.assertEqual(feed["tags"]["very_grindy"]["label_en"], "Very grindy")
-        # Tag customizada como status sem en: -> "Flagged: <nome>".
-        sync.apply_command(feed, sync.parse_command("!game 30 very_grindy"), 4)
-        self.assertEqual(feed["games"]["30"]["summary_en"], "Flagged: Very grindy.")
+        with self.assertRaises(sync.CommandError):
+            run(feed, "!ach 10 X unobtainable shutdown=maybe")
+        self.assertEqual(feed, {"games": {}})
 
-    def test_show_and_help(self):
-        feed = {"games": {}}
-        self.assertIn("No warning", sync.apply_command(feed, sync.parse_command("!show 5"), 1))
-        self.assertIn("!game", sync.apply_command(feed, sync.parse_command("!help"), 1))
+
+class Migration(unittest.TestCase):
+    def test_v1_feed_is_migrated(self):
+        feed = {
+            "version": 1,
+            "games": {
+                "1": {"revision": 2, "status": "unobtainable_100", "summary_en": "x", "achievements": {
+                    "MS": {"type": "unobtainable_100", "tags": ["broken", "unobtainable"], "note_en": "n"}}},
+                "2": {"revision": 1, "status": "servers_shutdown", "achievements": {},
+                      "shutdown_info": {"is_shutdown": True, "shutdown_date": "2027-01-31", "scope": "Entire game"}},
+                "3": {"revision": 1, "status": "unobtainable_100", "achievements": {}},
+                "4": {"revision": 1, "status": "partial_broken", "achievements": {"DLC": {"type": "dlc_required", "tags": ["missable"]}}},
+            },
+            "tags": {"teste": {"label_en": "Teste", "breaks_100": True}},
+        }
+        self.assertTrue(sync.migrate(feed))
+        g = feed["games"]
+        self.assertEqual(feed["version"], 2)
+        self.assertEqual((g["1"]["achievements"]["MS"]["obtainability"], g["1"]["achievements"]["MS"]["tags"]), ("unobtainable", []))
+        self.assertNotIn("obtainability", g["1"], "a conquista já diz o que quebrou")
+        self.assertEqual(g["2"]["shutdown"], {"date": "2027-01-31", "scope": "Entire game"})
+        self.assertEqual(g["3"]["obtainability"], "unobtainable")
+        self.assertEqual((g["4"]["obtainability"], g["4"]["achievements"]["DLC"]["tags"]), ("broken_but_obtainable", ["dlc_required", "missable"]))
+        self.assertFalse(feed["tags"]["teste"]["breaks_100"])
+        self.assertFalse(sync.migrate(feed), "só uma vez")
 
 
 class Tags(unittest.TestCase):
-    def test_create_use_rename_and_remove_tag(self):
+    def test_label_rename_and_remove(self):
         feed = {"games": {}}
-        # Tipo desconhecido até criar a tag.
-        with self.assertRaises(sync.CommandError):
-            sync.apply_command(feed, sync.parse_command("!game 10 grindy\nen: x"), 1)
-        sync.apply_command(feed, sync.parse_command("!tag add grindy breaks100=no\nen: Very grindy\npt: Muito grind"), 2)
+        run(feed, "!tag add grindy\nen: Very grindy\npt: Muito grind", 2)
         self.assertEqual(feed["tags"]["grindy"], {"label_en": "Very grindy", "label_pt": "Muito grind", "breaks_100": False})
-        sync.apply_command(feed, sync.parse_command("!game 10 grindy\nen: Takes 200 hours."), 3)
+        run(feed, "!ach 10 A add=grindy", 3)
         self.assertEqual(feed["games"]["10"]["revision"], 1)
         # Renomear a tag sobe a revisão de quem usa (o app mostra o nome novo).
-        sync.apply_command(feed, sync.parse_command("!tag add grindy\nen: Extremely grindy"), 4)
+        run(feed, "!tag add grindy\nen: Extremely grindy", 4)
         self.assertEqual((feed["tags"]["grindy"]["label_en"], feed["games"]["10"]["revision"]), ("Extremely grindy", 2))
-        self.assertIn("grindy", sync.apply_command(feed, sync.parse_command("!tags"), 5))
+        self.assertIn("grindy", run(feed, "!tags", 5))
         # Em uso: não apaga; depois de remover o jogo, apaga.
         with self.assertRaises(sync.CommandError):
-            sync.apply_command(feed, sync.parse_command("!tag remove grindy"), 6)
-        sync.apply_command(feed, sync.parse_command("!remove 10"), 7)
-        sync.apply_command(feed, sync.parse_command("!tag remove grindy"), 8)
+            run(feed, "!tag remove grindy", 6)
+        run(feed, "!remove 10", 7)
+        run(feed, "!tag remove grindy", 8)
         self.assertEqual(feed["tags"], {})
 
     def test_tag_validation(self):
-        for text in ["!tag add servers_shutdown\nen: x", "!tag add Bad-Key\nen: x", "!tag add ok_key breaks100=maybe\nen: x"]:
+        for text in ["!tag add servers_shutdown", "!tag add Bad!Key", "!tag add mp_required"]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError):
-                sync.apply_command({"games": {}}, sync.parse_command(text), 1)
+                run({"games": {}}, text)
+
+    def test_show_hides_legacy_fields_and_help(self):
+        feed = {"games": {}}
+        self.assertIn("No warning", run(feed, "!show 5"))
+        run(feed, "!ach 5 X unobtainable")
+        shown = run(feed, "!show 5")
+        self.assertIn('"obtainability": "unobtainable"', shown)
+        self.assertNotIn('"type"', shown)
+        self.assertIn("!shutdown", run(feed, "!help"))
 
 
 class WorkerMessages(unittest.TestCase):
     def test_reads_only_own_interaction_messages(self):
-        block = "✅ Queued:\n```text\n!game 5 mp_required\nen: Online only.\n```"
+        block = "✅ Queued:\n```text\n!ach 5 X unobtainable\nen: Online only.\n```"
         own = {"author": {"id": "app"}, "interaction_metadata": {"user": {"id": "u1"}}, "content": block}
         cmd, user = sync.worker_command(own, "app")
-        self.assertEqual((cmd.name, cmd.args, cmd.en, user), ("game", ["5", "mp_required"], "Online only.", "u1"))
+        self.assertEqual((cmd.name, cmd.args, cmd.en, user), ("ach", ["5", "X", "unobtainable"], "Online only.", "u1"))
         # Outro bot, sem interação ou sem bloco: ignorado.
         self.assertIsNone(sync.worker_command({**own, "author": {"id": "other"}}, "app"))
         self.assertIsNone(sync.worker_command({"author": {"id": "app"}, "content": block}, "app"))
@@ -143,14 +228,14 @@ class FakeDiscord:
 class RunFlow(unittest.TestCase):
     def test_end_to_end_with_admin_check_and_state(self):
         msgs = [
-            {"id": "1", "author": {"id": "u-admin", "username": "pedro"}, "content": "!game 219150 servers_shutdown\nen: Servers off."},
+            {"id": "1", "author": {"id": "u-admin", "username": "pedro"}, "content": "!shutdown 219150 2024-06-30\nen: Servers off."},
             {"id": "2", "author": {"id": "u-random", "username": "x"}, "content": "!remove 219150"},
-            {"id": "3", "author": {"id": "u-role", "username": "mod"}, "content": "!ach 219150 ONLINE servers_shutdown\nen: Online only."},
-            {"id": "4", "author": {"id": "u-admin", "username": "pedro"}, "content": "!game 777 broken"},  # erro: tipo desconhecido
+            {"id": "3", "author": {"id": "u-role", "username": "mod"}, "content": "!ach 219150 ONLINE shutdown=yes add=mp_required\nen: Online only."},
+            {"id": "4", "author": {"id": "u-admin", "username": "pedro"}, "content": "!ach 777 X obtainability=gone"},  # erro
             {"id": "5", "author": {"id": "u-admin", "username": "pedro"}, "content": "good morning"},
             # Resposta do Worker a um /ach de um admin.
             {"id": "6", "author": {"id": "app-1", "bot": True}, "interaction_metadata": {"user": {"id": "u-admin"}},
-             "content": "✅ Queued\n```text\n!ach 219150 RANKED servers_shutdown\nen: Ranked only.\n```"},
+             "content": "✅ Queued\n```text\n!ach 219150 RANKED unobtainable\nen: Ranked only.\n```"},
             # Mesmo formato, mas de quem não é admin.
             {"id": "7", "author": {"id": "app-1", "bot": True}, "interaction_metadata": {"user": {"id": "u-random"}},
              "content": "```text\n!remove 219150\n```"},
@@ -171,9 +256,9 @@ class RunFlow(unittest.TestCase):
 
             feed = json.loads(feed_path.read_text(encoding="utf8"))
             game = feed["games"]["219150"]
-            self.assertEqual(game["revision"], 3)                      # !game + !ach (cargo admin) + /ach (Worker)
-            self.assertIn("ONLINE", game["achievements"])
-            self.assertIn("RANKED", game["achievements"])
+            self.assertEqual(game["revision"], 3)                      # !shutdown + !ach (cargo admin) + /ach (Worker)
+            self.assertTrue(game["achievements"]["ONLINE"]["shutdown"])
+            self.assertEqual(game["achievements"]["RANKED"]["obtainability"], "unobtainable")
             self.assertNotIn("777", feed["games"])                     # comando com erro não grava nada
             self.assertEqual(json.loads(state_path.read_text())["last_message_id"], "7")
             self.assertEqual(fake.reactions, [("1", "✅"), ("2", "⛔"), ("3", "✅"), ("4", "❌"), ("6", "✅"), ("7", "⛔")])

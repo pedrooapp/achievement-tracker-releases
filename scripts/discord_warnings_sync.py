@@ -1,37 +1,50 @@
 """Atualiza o feed de avisos (unobtainable_warnings.json) a partir de comandos num canal do Discord.
 
-Roda no GitHub Actions do repositório PÚBLICO de releases (.github/workflows/discord-warnings-sync.yml)
-a cada 10 minutos (minutos de Actions são gratuitos em repositório público):
+Roda no GitHub Actions do repositório PÚBLICO de releases (.github/workflows/discord-warnings-sync.yml),
+disparado pelo Worker logo depois de cada comando de barra (e por agendamento, como reserva):
   1. lê as mensagens novas do canal de administração (bot com permissão de leitura);
   2. aceita só mensagens de administradores (IDs de usuário e/ou cargo);
   3. aplica os comandos no feed e reage com ✅ (ou ❌ + resposta explicando o erro);
   4. grava o feed e o estado (última mensagem lida); o workflow faz commit no repositório público.
 
+Modelo do feed (version 2), por jogo (appid) e por conquista (apiname):
+  - obtainability da conquista: unobtainable | possibly_obtainable | broken_but_obtainable
+    (o app marca o jogo como "conquistas quebradas" sozinho e notifica quem ainda não tem a conquista);
+  - shutdown do jogo com data: antes = aviso de desligamento; na data = desligado (as conquistas
+    vinculadas viram quebradas). Notifica quem não tem 100%;
+  - tags da conquista (mp_required, dlc_required, unavailable, developer_required, date_sensitive
+    ou qualquer outra): só informativas, nunca notificam.
+
 Comandos (uma por mensagem; linhas "en:" / "pt:" opcionais logo abaixo):
 
-  !game <appid> <status> [shutdown=AAAA-MM-DD] [scope=texto]
-  en: resumo em inglês
-  pt: resumo em português
-
-  !ach <appid> <API_NAME> <tipo> [tags=a,b,c]
+  !ach <appid> <API_NAME> [obtenção|none] [tags=a,b] [add=a,b] [del=a,b] [shutdown=yes|no]
   en: nota em inglês
   pt: nota em português
 
+  !shutdown <appid> <AAAA-MM-DD|now|remove> [scope=texto] [achievements=A,B]
+  en: resumo / pt: resumo (opcionais: viram o resumo do jogo)
+
+  !game <appid> [obtainability=<obtenção>|none]   resumo do jogo (linhas en:/pt:) e obtenção
+                                                  do jogo inteiro (quando a conquista exata
+                                                  não é conhecida)
   !remove <appid>              remove o jogo inteiro
   !remove <appid> <API_NAME>   remove só uma conquista
   !show <appid>                responde com o que está publicado para o jogo
-  !tag add <chave> [breaks100=yes|no]   cria/edita um tipo (tag) novo; linhas en:/pt: = nome
-  !tag remove <chave>          apaga um tipo criado (só se nenhum jogo usar)
-  !tags                        lista os tipos
+  !tag add <chave>             nome de uma tag (linhas en:/pt:); tags novas também são criadas
+                               sozinhas ao serem usadas em !ach
+  !tag remove <chave>          apaga o nome de uma tag (só se nenhuma conquista usar)
+  !tags                        lista as tags
   !help                        lista os comandos
 
-Tipos aceitos: os 5 fixos (servers_shutdown, unobtainable_100, partial_broken, mp_required,
-dlc_required) + os criados com !tag add (ficam em "tags" no feed).
+Comandos antigos continuam aceitos: `!ach <appid> <API> unobtainable_100|partial_broken|
+servers_shutdown|<tag>` e `!game <appid> servers_shutdown|unobtainable_100|partial_broken
+[shutdown=AAAA-MM-DD]`. O feed também guarda os campos antigos (`status`, `type`,
+`shutdown_info`), derivados do modelo novo, para versões antigas do app.
 
-Comandos de barra (/game, /ach, /tag…) são respondidos na hora por um Cloudflare Worker,
+Comandos de barra (/ach, /shutdown, /game…) são respondidos na hora por um Cloudflare Worker,
 que posta a confirmação no canal num bloco ```text com o comando equivalente; este script
 aplica esse bloco como se fosse um comando de texto (autor = quem usou o comando de barra).
-Toda mudança num jogo sobe a `revision` dele (o app notifica uma vez por revisão).
+Toda mudança num jogo sobe a `revision` dele.
 
 Sem dependências externas (só a biblioteca padrão do Python 3.10+).
 """
@@ -50,18 +63,24 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-BUILTIN_FLAGS = ("servers_shutdown", "unobtainable_100", "partial_broken", "mp_required", "dlc_required")
+FEED_VERSION = 2
+OBTAINABILITY = ("unobtainable", "possibly_obtainable", "broken_but_obtainable")
+BUILTIN_TAGS = ("mp_required", "dlc_required", "unavailable", "developer_required", "date_sensitive")
+# Tipos do formato antigo.
+LEGACY_OBTAINABILITY = {"unobtainable_100": "unobtainable", "partial_broken": "broken_but_obtainable"}
 TAG_KEY = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
 API = "https://discord.com/api/v10"
 USER_AGENT = "DiscordBot (https://github.com/pedrooapp/achievement-tracker-releases, 1.0)"
 MAX_REPLY = 1900
 
 HELP = """**Achievement Tracker — warnings commands**
-`!game <appid> <status> [shutdown=YYYY-MM-DD] [scope=text]` + lines `en: …` / `pt: …`
-`!ach <appid> <API_NAME> <type> [tags=a,b]` + lines `en: …` / `pt: …`
+`!ach <appid> <API_NAME> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b] [shutdown=yes|no]` + lines `en: …` / `pt: …` (note)
+`!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=A,B]` + lines `en:` / `pt:` (summary)
+`!game <appid> [obtainability=…|none]` + lines `en:` / `pt:` (game summary)
 `!remove <appid>` · `!remove <appid> <API_NAME>` · `!show <appid>` · `!help`
-`!tag add <key> [breaks100=yes|no]` + lines `en: Name` / `pt: Nome` · `!tag remove <key>` · `!tags`
-Types: """ + ", ".join(BUILTIN_FLAGS) + " + your tags (`!tags`)"
+`!tag add <key>` + lines `en: Name` / `pt: Nome` · `!tag remove <key>` · `!tags`
+Obtainability notifies players who don't have the achievement · shutdown notifies players below 100% · tags never notify.
+Tags: """ + ", ".join(BUILTIN_TAGS) + " + any new key (`!tags`)"
 
 
 class CommandError(Exception):
@@ -117,32 +136,12 @@ def _app_id(text: str) -> str:
     return str(int(text))
 
 
-def all_types(feed: dict) -> list[str]:
-    """Tipos aceitos: os 5 fixos + as tags criadas pelos admins."""
-    return list(BUILTIN_FLAGS) + sorted(feed.get("tags", {}))
-
-
-def _flag(text: str, feed: dict) -> str:
-    flag = text.lower()
-    if flag not in all_types(feed):
-        raise CommandError(f"Unknown type `{text}`. Use one of: {', '.join(all_types(feed))} (or create it with `!tag add`).")
-    return flag
-
-
 def _yes(text: str) -> bool:
     if text.lower() in ("yes", "y", "true", "1", "sim", "s"):
         return True
     if text.lower() in ("no", "n", "false", "0", "nao", "não"):
         return False
     raise CommandError(f"`{text}` should be yes or no.")
-
-
-def _uses_tag(feed: dict, key: str) -> list[str]:
-    used = []
-    for app_id, game in feed.get("games", {}).items():
-        if game.get("status") == key or any(a.get("type") == key for a in game.get("achievements", {}).values()):
-            used.append(app_id)
-    return used
 
 
 def _date(text: str) -> str:
@@ -152,51 +151,135 @@ def _date(text: str) -> str:
         raise CommandError(f"`{text}` is not a date in YYYY-MM-DD format.") from e
 
 
-# ---------------------------------------------------------------- aplicação no feed
+def _obtainability(text: str) -> str | None:
+    """`none` → None; valor antigo é traduzido; senão tem de ser uma das 3 categorias."""
+    low = text.lower()
+    if low in ("none", "clear", "-"):
+        return None
+    low = LEGACY_OBTAINABILITY.get(low, low)
+    if low not in OBTAINABILITY:
+        raise CommandError(f"Unknown obtainability `{text}`. Use one of: {', '.join(OBTAINABILITY)} or `none`.")
+    return low
+
+
+def _tag_key(text: str) -> str:
+    key = text.strip().lower().replace("-", "_").replace(" ", "_")
+    if key in OBTAINABILITY or key in LEGACY_OBTAINABILITY or key in ("servers_shutdown", "shutdown"):
+        raise CommandError(f"`{key}` is not a tag. Use obtainability (`unobtainable`…) or `!shutdown` instead.")
+    if not TAG_KEY.match(key):
+        raise CommandError(f"Tag `{text}`: use lowercase letters, numbers and `_` (2–32 chars), starting with a letter. Ex.: `mp_required`.")
+    return key
+
+
+def _tag_list(text: str) -> list[str]:
+    out: list[str] = []
+    for part in text.split(","):
+        if part.strip():
+            key = _tag_key(part)
+            if key not in out:
+                out.append(key)
+    return out
+
+
+def _uses_tag(feed: dict, key: str) -> list[str]:
+    used = []
+    for app_id, game in feed.get("games", {}).items():
+        if any(key in a.get("tags", []) for a in game.get("achievements", {}).values()):
+            used.append(app_id)
+    return used
+
+
+def _ensure_tag(feed: dict, key: str) -> None:
+    """Tag nova usada numa conquista: cria o nome a partir da chave (dá para mudar com !tag add)."""
+    if key in BUILTIN_TAGS:
+        return
+    tag = feed.setdefault("tags", {}).setdefault(key, {})
+    tag.setdefault("label_en", key.replace("_", " ").capitalize())
+    tag.setdefault("label_pt", "")
+    tag["breaks_100"] = False
+
+
+# ---------------------------------------------------------------- modelo novo ↔ formato antigo
 
 
 def _touch(game: dict) -> None:
     game["revision"] = int(game.get("revision", 0)) + 1
 
 
-# Resumo padrão quando o admin não escreve `en:` (o app mostra isto no aviso do jogo).
-DEFAULT_SUMMARY = {
-    "servers_shutdown": (
-        "Official servers were shut down; some achievements can no longer be unlocked.",
-        "Os servidores oficiais foram desligados; algumas conquistas não podem mais ser desbloqueadas.",
-    ),
-    "unobtainable_100": (
-        "One or more achievements can't be unlocked, so 100% isn't possible right now.",
-        "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
-    ),
-    "partial_broken": (
-        "Some achievements are reported as buggy or hard to unlock.",
-        "Algumas conquistas estão com bug ou difíceis de desbloquear.",
-    ),
-    "mp_required": ("Some achievements need multiplayer.", "Algumas conquistas exigem multiplayer."),
-    "dlc_required": ("Some achievements need a DLC.", "Algumas conquistas exigem uma DLC."),
-}
+def migrate(feed: dict) -> bool:
+    """Feed version 1 (status/type/shutdown_info) → version 2. Devolve True se mudou."""
+    if int(feed.get("version", 1)) >= FEED_VERSION:
+        return False
+    for game in feed.get("games", {}).values():
+        status = game.get("status")
+        info = game.get("shutdown_info") or {}
+        if status == "servers_shutdown" or info.get("is_shutdown"):
+            game["shutdown"] = {"date": info.get("shutdown_date"), "scope": info.get("scope")}
+        for ach in game.get("achievements", {}).values():
+            kind = ach.get("type", "")
+            tags = [t for t in ach.get("tags", []) if t not in ("broken", "unobtainable", "shutdown")]
+            if kind in LEGACY_OBTAINABILITY:
+                ach["obtainability"] = LEGACY_OBTAINABILITY[kind]
+            elif kind == "servers_shutdown":
+                ach["shutdown"] = True
+            elif kind and kind not in tags:
+                tags.insert(0, kind)
+            ach["tags"] = [_tag_key(t) for t in tags if TAG_KEY.match(t.lower())]
+            for t in ach["tags"]:
+                _ensure_tag(feed, t)
+        has_ach_obtainability = any(a.get("obtainability") for a in game.get("achievements", {}).values())
+        if status in LEGACY_OBTAINABILITY and not has_ach_obtainability:
+            game["obtainability"] = LEGACY_OBTAINABILITY[status]
+        _write_legacy(game)
+    for tag in feed.get("tags", {}).values():
+        tag["breaks_100"] = False  # tags não notificam mais
+    feed["version"] = FEED_VERSION
+    return True
 
 
-def default_summary(feed: dict, kind: str) -> tuple[str, str]:
-    if kind in DEFAULT_SUMMARY:
-        return DEFAULT_SUMMARY[kind]
-    tag = feed.get("tags", {}).get(kind, {})
-    en = tag.get("label_en") or kind
-    return (f"Flagged: {en}.", f"Marcado: {tag.get('label_pt') or en}.")
+def _write_legacy(game: dict) -> None:
+    """Campos antigos derivados do modelo novo, para versões antigas do app continuarem mostrando."""
+    achievements = game.get("achievements", {})
+    for ach in achievements.values():
+        o = ach.get("obtainability")
+        if o == "unobtainable":
+            ach["type"] = "unobtainable_100"
+        elif o in ("possibly_obtainable", "broken_but_obtainable"):
+            ach["type"] = "partial_broken"
+        elif ach.get("shutdown"):
+            ach["type"] = "servers_shutdown"
+        else:
+            ach["type"] = (ach.get("tags") or [""])[0]
+    kinds = [a["type"] for a in achievements.values()]
+    shutdown = game.get("shutdown")
+    if shutdown is not None:
+        game["status"] = "servers_shutdown"
+        game["shutdown_info"] = {"is_shutdown": True, "shutdown_date": shutdown.get("date"), "scope": shutdown.get("scope")}
+    else:
+        game.pop("shutdown_info", None)
+        whole = game.get("obtainability")
+        if whole == "unobtainable" or "unobtainable_100" in kinds:
+            game["status"] = "unobtainable_100"
+        elif whole or "partial_broken" in kinds:
+            game["status"] = "partial_broken"
+        else:
+            game["status"] = next((k for k in kinds if k in ("mp_required", "dlc_required")), None) or next((k for k in kinds if k), None)
+        if game["status"] is None:
+            game.pop("status")
 
 
-def _new_game(feed: dict, app_id: str, status: str) -> dict:
-    en, pt = default_summary(feed, status)
-    game = {"revision": 0, "status": status, "summary_en": en, "summary_pt": pt, "achievements": {}}
-    if status == "servers_shutdown":
-        game["shutdown_info"] = {"is_shutdown": True, "shutdown_date": None, "scope": "full_game_or_online_mode"}
+def _game(games: dict, app_id: str) -> dict:
+    game = games.setdefault(app_id, {"revision": 0, "summary_en": "", "summary_pt": "", "achievements": {}})
+    game.setdefault("achievements", {})
+    game.setdefault("summary_en", "")
+    game.setdefault("summary_pt", "")
     return game
 
 
 def apply_command(feed: dict, cmd: Command, now: int) -> str | None:
     """Aplica no feed (tudo ou nada). Devolve um texto para responder (ex.: !show) ou None."""
     work = json.loads(json.dumps(feed))
+    migrate(work)
     answer = _apply(work, cmd, now)
     feed.clear()
     feed.update(work)
@@ -215,58 +298,131 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
         app_id = _app_id(cmd.args[0])
         if app_id not in games:
             return f"No warning published for `{app_id}`."
-        text = json.dumps(games[app_id], ensure_ascii=False, indent=2)
+        shown = json.loads(json.dumps(games[app_id]))
+        # Sem os campos antigos (só existem para versões antigas do app).
+        shown.pop("status", None)
+        shown.pop("shutdown_info", None)
+        for a in shown.get("achievements", {}).values():
+            a.pop("type", None)
+        text = json.dumps(shown, ensure_ascii=False, indent=2)
         if len(text) > MAX_REPLY - 20:
             text = text[: MAX_REPLY - 40] + "\n…"
         return f"```json\n{text}\n```"
 
-    if cmd.name == "game":
-        if len(cmd.args) != 2:
-            raise CommandError("Usage: `!game <appid> <status> [shutdown=YYYY-MM-DD] [scope=text]` + `en:` / `pt:` lines")
-        app_id, status = _app_id(cmd.args[0]), _flag(cmd.args[1], feed)
-        game = games.setdefault(app_id, {"revision": 0, "achievements": {}})
-        game["status"] = status
-        if "shutdown" in cmd.options:
-            game["shutdown_info"] = {
-                "is_shutdown": True,
-                "shutdown_date": _date(cmd.options["shutdown"]),
-                "scope": cmd.options.get("scope") or (game.get("shutdown_info") or {}).get("scope") or "full_game_or_online_mode",
-            }
-        elif status == "servers_shutdown" and "shutdown_info" not in game:
-            game["shutdown_info"] = {"is_shutdown": True, "shutdown_date": None, "scope": cmd.options.get("scope") or "full_game_or_online_mode"}
-        if cmd.en:
-            game["summary_en"] = cmd.en
-        if cmd.pt:
-            game["summary_pt"] = cmd.pt
-        if not game.get("summary_en"):
-            # Sem `en:`: resumo padrão do tipo (nos dois idiomas, se `pt:` também faltar).
-            en, pt = default_summary(feed, status)
-            game["summary_en"] = en
-            if not game.get("summary_pt"):
-                game["summary_pt"] = pt
-        game.setdefault("summary_pt", "")
-        game.setdefault("achievements", {})
-        _touch(game)
-
-    elif cmd.name == "ach":
-        if len(cmd.args) != 3:
-            raise CommandError("Usage: `!ach <appid> <API_NAME> <type> [tags=a,b]` + `en:` / `pt:` lines")
-        app_id, api_name, kind = _app_id(cmd.args[0]), cmd.args[1], _flag(cmd.args[2], feed)
-        if app_id not in games:
-            # Jogo ainda sem aviso: cria com o mesmo tipo da conquista (dá para mudar com !game).
-            games[app_id] = _new_game(feed, app_id, kind)
-        game = games[app_id]
-        ach = game.setdefault("achievements", {}).setdefault(api_name, {})
-        ach["type"] = kind
+    if cmd.name == "ach":
+        if len(cmd.args) not in (2, 3):
+            raise CommandError(
+                "Usage: `!ach <appid> <API_NAME> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b] [shutdown=yes|no]` + `en:` / `pt:` lines"
+            )
+        app_id, api_name = _app_id(cmd.args[0]), cmd.args[1]
+        game = _game(games, app_id)
+        ach = game["achievements"].setdefault(api_name, {})
+        tags: list[str] = list(ach.get("tags", []))
+        if len(cmd.args) == 3:
+            kind = cmd.args[2].lower()
+            if kind == "servers_shutdown":  # formato antigo
+                ach["shutdown"] = True
+            elif kind in ("none", "clear", "-") or kind in OBTAINABILITY or kind in LEGACY_OBTAINABILITY:
+                o = _obtainability(kind)
+                if o:
+                    ach["obtainability"] = o
+                else:
+                    ach.pop("obtainability", None)
+            else:  # formato antigo: o "tipo" era uma tag (mp_required, dlc_required, tag nova…)
+                key = _tag_key(kind)
+                if key not in tags:
+                    tags.append(key)
+        if "obtainability" in cmd.options:
+            o = _obtainability(cmd.options["obtainability"])
+            if o:
+                ach["obtainability"] = o
+            else:
+                ach.pop("obtainability", None)
         if "tags" in cmd.options:
-            ach["tags"] = [t.strip() for t in cmd.options["tags"].split(",") if t.strip()]
-        ach.setdefault("tags", [])
+            tags = _tag_list(cmd.options["tags"])
+        for key in _tag_list(cmd.options.get("add", "")):
+            if key not in tags:
+                tags.append(key)
+        removing = _tag_list(cmd.options.get("del", "")) + _tag_list(cmd.options.get("remove", ""))
+        tags = [t for t in tags if t not in removing]
+        ach["tags"] = tags
+        for t in tags:
+            _ensure_tag(feed, t)
+        if "shutdown" in cmd.options:
+            if _yes(cmd.options["shutdown"]):
+                ach["shutdown"] = True
+            else:
+                ach.pop("shutdown", None)
         if cmd.en:
             ach["note_en"] = cmd.en
         if cmd.pt:
             ach["note_pt"] = cmd.pt
         ach.setdefault("note_en", "")
         ach.setdefault("note_pt", "")
+        # Nada sobrou na conquista: tira do feed.
+        if not (ach.get("obtainability") or ach.get("shutdown") or ach["tags"] or ach["note_en"] or ach["note_pt"]):
+            del game["achievements"][api_name]
+        _write_legacy(game)
+        _touch(game)
+
+    elif cmd.name == "shutdown":
+        if len(cmd.args) != 2:
+            raise CommandError("Usage: `!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=A,B]` + `en:` / `pt:` lines")
+        app_id, when = _app_id(cmd.args[0]), cmd.args[1].lower()
+        if when in ("remove", "none", "clear", "off"):
+            if app_id not in games or "shutdown" not in games[app_id]:
+                raise CommandError(f"`{app_id}` has no shutdown.")
+            game = games[app_id]
+            del game["shutdown"]
+        else:
+            game = _game(games, app_id)
+            shutdown = game.get("shutdown") or {}
+            shutdown["date"] = None if when in ("now", "already", "yes") else _date(cmd.args[1])
+            if "scope" in cmd.options:
+                shutdown["scope"] = cmd.options["scope"] or None
+            shutdown.setdefault("scope", None)
+            game["shutdown"] = shutdown
+            for api in [a.strip() for a in cmd.options.get("achievements", "").split(",") if a.strip()]:
+                game["achievements"].setdefault(api, {"tags": [], "note_en": "", "note_pt": ""})["shutdown"] = True
+        if cmd.en:
+            game["summary_en"] = cmd.en
+        if cmd.pt:
+            game["summary_pt"] = cmd.pt
+        _write_legacy(game)
+        _touch(game)
+
+    elif cmd.name == "game":
+        if len(cmd.args) not in (1, 2):
+            raise CommandError("Usage: `!game <appid> [obtainability=…|none]` + `en:` / `pt:` lines (game summary)")
+        app_id = _app_id(cmd.args[0])
+        game = _game(games, app_id)
+        if len(cmd.args) == 2:  # formato antigo: !game <appid> <status>
+            status = cmd.args[1].lower()
+            if status == "servers_shutdown":
+                shutdown = game.get("shutdown") or {"date": None, "scope": None}
+                if "shutdown" in cmd.options:
+                    shutdown["date"] = _date(cmd.options["shutdown"])
+                if cmd.options.get("scope"):
+                    shutdown["scope"] = cmd.options["scope"]
+                game["shutdown"] = shutdown
+            elif status in LEGACY_OBTAINABILITY or status in OBTAINABILITY:
+                game["obtainability"] = _obtainability(status)
+            else:
+                raise CommandError(
+                    f"`{status}` is a tag: tags go on achievements (`!ach {app_id} <API_NAME> add={status}`). "
+                    "For the whole game use `obtainability=` or `!shutdown`."
+                )
+        if "obtainability" in cmd.options:
+            o = _obtainability(cmd.options["obtainability"])
+            if o:
+                game["obtainability"] = o
+            else:
+                game.pop("obtainability", None)
+        if cmd.en:
+            game["summary_en"] = cmd.en
+        if cmd.pt:
+            game["summary_pt"] = cmd.pt
+        _write_legacy(game)
         _touch(game)
 
     elif cmd.name == "remove":
@@ -282,24 +438,25 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
             if cmd.args[1] not in achievements:
                 raise CommandError(f"`{cmd.args[1]}` has no warning in `{app_id}`.")
             del achievements[cmd.args[1]]
+            _write_legacy(games[app_id])
             _touch(games[app_id])
 
     elif cmd.name == "tags":
         tags = feed.get("tags", {})
-        lines = [f"`{k}` (built-in)" for k in BUILTIN_FLAGS]
+        lines = [f"`{k}` (built-in)" for k in BUILTIN_TAGS]
         for key in sorted(tags):
+            if key in BUILTIN_TAGS:
+                continue
             t = tags[key]
-            lines.append(f"`{key}` — {t.get('label_en') or key} / {t.get('label_pt') or '—'}" + (" · breaks 100%" if t.get("breaks_100") else ""))
-        return "**Types**\n" + "\n".join(lines)
+            lines.append(f"`{key}` — {t.get('label_en') or key} / {t.get('label_pt') or '—'}")
+        return "**Tags** (never notify)\n" + "\n".join(lines)
 
     elif cmd.name == "tag":
         if len(cmd.args) != 2 or cmd.args[0].lower() not in ("add", "remove"):
-            raise CommandError("Usage: `!tag add <key> [breaks100=yes|no]` + `en:` / `pt:` lines, or `!tag remove <key>`")
-        action, key = cmd.args[0].lower(), cmd.args[1].lower()
-        if key in BUILTIN_FLAGS:
-            raise CommandError(f"`{key}` is a built-in type and can't be changed.")
-        if not TAG_KEY.match(key):
-            raise CommandError("Tag keys use lowercase letters, numbers and `_` (2–32 chars), starting with a letter. Ex.: `grindy`.")
+            raise CommandError("Usage: `!tag add <key>` + `en:` / `pt:` lines, or `!tag remove <key>`")
+        action, key = cmd.args[0].lower(), _tag_key(cmd.args[1])
+        if key in BUILTIN_TAGS:
+            raise CommandError(f"`{key}` is a built-in tag: its name is already translated in the app.")
         tags = feed.setdefault("tags", {})
         if action == "remove":
             if key not in tags:
@@ -309,17 +466,12 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
                 raise CommandError(f"Tag `{key}` is still used in: {', '.join(used[:10])}. Change those first.")
             del tags[key]
         else:
-            tag = tags.setdefault(key, {})
+            _ensure_tag(feed, key)
+            tag = tags[key]
             if cmd.en:
                 tag["label_en"] = cmd.en
             if cmd.pt:
                 tag["label_pt"] = cmd.pt
-            if not tag.get("label_en"):
-                tag["label_en"] = key.replace("_", " ").capitalize()
-            tag.setdefault("label_pt", "")
-            if "breaks100" in cmd.options:
-                tag["breaks_100"] = _yes(cmd.options["breaks100"])
-            tag.setdefault("breaks_100", False)
             # Jogos que já usam a tag passam a mostrar o nome novo: sobe a revisão deles.
             for app_id in _uses_tag(feed, key):
                 _touch(feed["games"][app_id])
@@ -328,7 +480,7 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
         raise CommandError(f"Unknown command `!{cmd.name}`. Type `!help`.")
 
     feed["updated_at"] = now
-    feed.setdefault("version", 1)
+    feed["version"] = FEED_VERSION
     return None
 
 
@@ -435,13 +587,14 @@ def run() -> int:
     feed_path = Path(env.get("FEED_PATH", "unobtainable_warnings.json"))
     state_path = Path(env.get("STATE_PATH", "discord_sync_state.json"))
 
-    feed = json.loads(feed_path.read_text(encoding="utf8")) if feed_path.exists() else {"version": 1, "updated_at": 0, "games": {}}
+    feed = json.loads(feed_path.read_text(encoding="utf8")) if feed_path.exists() else {"version": FEED_VERSION, "updated_at": 0, "games": {}}
+    changed_by_migration = migrate(feed)
     state = json.loads(state_path.read_text(encoding="utf8")) if state_path.exists() else {}
     discord = Discord(token)
     guild = (discord.request("GET", f"/channels/{channel}") or {}).get("guild_id")
 
     last = state.get("last_message_id")
-    changed = False
+    changed = changed_by_migration
     # Só grava o estado quando houve comando (evita um commit a cada mensagem de conversa).
     processed_any = False
     while True:

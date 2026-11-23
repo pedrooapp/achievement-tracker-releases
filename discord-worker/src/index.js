@@ -1,4 +1,4 @@
-// Cloudflare Worker: responde NA HORA aos comandos de barra do bot de avisos (/game, /ach, /tag…).
+// Cloudflare Worker: responde NA HORA aos comandos de barra do bot de avisos (/ach, /shutdown, /game…).
 //
 // Só responde: não grava nada e não guarda nenhum token. A resposta (visível no canal) traz o
 // comando equivalente num bloco ```text; o sync do GitHub Actions (scripts/discord_warnings_sync.py)
@@ -10,7 +10,11 @@
 // depois de cada comando que altera o feed, o Worker dispara o sync na hora em vez de esperar o
 // agendamento do GitHub (que pode atrasar horas).
 
-const BUILTIN = ["servers_shutdown", "unobtainable_100", "partial_broken", "mp_required", "dlc_required"];
+// Modelo do feed (version 2): obtenção por conquista (notifica quem não tem a conquista),
+// shutdown do jogo com data (notifica quem não tem 100%) e tags de conquista (nunca notificam).
+const OBTAINABILITY = ["unobtainable", "possibly_obtainable", "broken_but_obtainable"];
+const BUILTIN_TAGS = ["mp_required", "dlc_required", "unavailable", "developer_required", "date_sensitive"];
+const NOT_TAGS = [...OBTAINABILITY, "unobtainable_100", "partial_broken", "servers_shutdown", "shutdown"];
 const TAG_KEY = /^[a-z][a-z0-9_]{1,31}$/;
 const EPHEMERAL = 64;
 
@@ -63,7 +67,8 @@ async function loadFeed(url) {
   return feedCache.data ?? { games: {}, tags: {} };
 }
 
-const allTypes = (feed) => [...BUILTIN, ...Object.keys(feed.tags ?? {}).sort()];
+/** Tags oficiais + as que os admins já usaram (feed.tags). */
+const allTags = (feed) => [...BUILTIN_TAGS, ...Object.keys(feed.tags ?? {}).filter((k) => !BUILTIN_TAGS.includes(k)).sort()];
 
 // ---------------------------------------------------------------- respostas
 
@@ -94,14 +99,23 @@ function appIdOf(v) {
   return String(Number(s));
 }
 
-function typeOf(v, feed) {
-  const t = clean(v).toLowerCase();
-  if (!allTypes(feed).includes(t)) {
-    throw new UserError(
-      `Unknown type \`${t}\`. Use: ${allTypes(feed).join(", ")}.\nIf you just created it with /tag add, wait for the next sync (~10 min).`,
-    );
+function obtainabilityOf(v) {
+  const o = clean(v).toLowerCase();
+  if (o === "none" || OBTAINABILITY.includes(o)) return o;
+  throw new UserError(`Unknown obtainability \`${o}\`. Use: ${OBTAINABILITY.join(", ")} or none.`);
+}
+
+/** "a, B-c" → "a,b_c". Chave nova é aceita (o sync cria o nome dela). */
+function tagListOf(v, field) {
+  const keys = clean(v)
+    .split(",")
+    .map((t) => t.trim().toLowerCase().replace(/[\s-]+/g, "_"))
+    .filter(Boolean);
+  for (const k of keys) {
+    if (NOT_TAGS.includes(k)) throw new UserError(`\`${k}\` is not a tag. Use \`obtainability\` or /shutdown instead.`);
+    if (!TAG_KEY.test(k)) throw new UserError(`\`${field}\`: tag \`${k}\` must use lowercase letters, numbers and _ (2–32 chars), starting with a letter.`);
   }
-  return t;
+  return [...new Set(keys)].join(",");
 }
 
 function textLines(values) {
@@ -114,20 +128,34 @@ function textLines(values) {
 /** Comando de barra → comando de texto equivalente (o que o sync aplica). */
 export function toTextCommand(name, sub, values, feed) {
   switch (name) {
-    case "game": {
-      const head = [`!game ${appIdOf(values.appid)} ${typeOf(values.status, feed)}`];
-      if (values.shutdown) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(clean(values.shutdown))) throw new UserError("`shutdown` must be a date in YYYY-MM-DD format.");
-        head.push(`shutdown=${clean(values.shutdown)}`);
-      }
-      if (clean(values.scope)) head.push(quoteOpt("scope", clean(values.scope)));
-      return [head.join(" "), ...textLines(values)].join("\n");
-    }
     case "ach": {
       const api = clean(values.api_name);
       if (!/^\S+$/.test(api)) throw new UserError("`api_name` can't have spaces.");
-      const head = [`!ach ${appIdOf(values.appid)} ${api} ${typeOf(values.type, feed)}`];
-      if (clean(values.tags)) head.push(`tags=${clean(values.tags).replace(/\s*,\s*/g, ",").replace(/\s/g, "_")}`);
+      const head = [`!ach ${appIdOf(values.appid)} ${api}`];
+      if (values.obtainability !== undefined) head.push(obtainabilityOf(values.obtainability));
+      for (const [opt, field] of [["tags", "tags"], ["add", "add_tags"], ["del", "remove_tags"]]) {
+        if (clean(values[field])) head.push(`${opt}=${tagListOf(values[field], field)}`);
+      }
+      if (values.shutdown !== undefined) head.push(`shutdown=${values.shutdown ? "yes" : "no"}`);
+      if (head.length === 1 && !textLines(values).length) {
+        throw new UserError("Nothing to change: set `obtainability`, tags, `shutdown` or a note.");
+      }
+      return [head.join(" "), ...textLines(values)].join("\n");
+    }
+    case "shutdown": {
+      const when = clean(values.date).toLowerCase() || "now";
+      if (!["now", "remove"].includes(when) && !/^\d{4}-\d{2}-\d{2}$/.test(when)) {
+        throw new UserError("`date` must be YYYY-MM-DD, `now` (already shut down) or `remove`.");
+      }
+      const head = [`!shutdown ${appIdOf(values.appid)} ${when}`];
+      if (clean(values.scope)) head.push(quoteOpt("scope", clean(values.scope)));
+      if (clean(values.achievements)) head.push(`achievements=${clean(values.achievements).replace(/\s*,\s*/g, ",").replace(/\s/g, "")}`);
+      return [head.join(" "), ...textLines(values)].join("\n");
+    }
+    case "game": {
+      const head = [`!game ${appIdOf(values.appid)}`];
+      if (values.obtainability !== undefined) head.push(`obtainability=${obtainabilityOf(values.obtainability)}`);
+      if (head.length === 1 && !textLines(values).length) throw new UserError("Nothing to change: set `obtainability` or a summary (`en` / `pt`).");
       return [head.join(" "), ...textLines(values)].join("\n");
     }
     case "remove": {
@@ -136,12 +164,11 @@ export function toTextCommand(name, sub, values, feed) {
     }
     case "tag": {
       const key = clean(values.key).toLowerCase();
-      if (BUILTIN.includes(key)) throw new UserError(`\`${key}\` is a built-in type and can't be changed.`);
+      if (BUILTIN_TAGS.includes(key)) throw new UserError(`\`${key}\` is a built-in tag: its name is already translated in the app.`);
+      if (NOT_TAGS.includes(key)) throw new UserError(`\`${key}\` is not a tag.`);
       if (!TAG_KEY.test(key)) throw new UserError("Tag keys use lowercase letters, numbers and `_` (2–32 chars), starting with a letter. Ex.: `grindy`.");
       if (sub === "remove") return `!tag remove ${key}`;
-      const head = [`!tag add ${key}`];
-      if (values.breaks100 !== undefined) head.push(`breaks100=${values.breaks100 ? "yes" : "no"}`);
-      return [head.join(" "), ...textLines(values)].join("\n");
+      return [`!tag add ${key}`, ...textLines(values)].join("\n");
     }
     default:
       throw new UserError(`Unknown command /${name}.`);
@@ -150,9 +177,12 @@ export function toTextCommand(name, sub, values, feed) {
 
 const HELP = [
   "**Achievement Tracker — warnings**",
-  "`/game` flag a whole game (en/pt optional) · `/ach` flag one achievement (flags the game too) · `/remove` remove a game or achievement",
-  "`/show` see what's published · `/tag add|remove|list` manage your own types (tags)",
-  `Built-in types: ${BUILTIN.join(", ")}`,
+  "`/ach` mark one achievement: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), tags, `shutdown` link, note",
+  "`/shutdown` servers shutting down on a date (`date: YYYY-MM-DD`), already off (`now`) or `remove`",
+  "`/game` game summary, or obtainability for the whole game · `/remove` a game or achievement · `/show` what's published",
+  "`/tag add|remove|list` names for your own tags",
+  `Built-in tags: ${BUILTIN_TAGS.join(", ")} (any new key works too)`,
+  "Who gets notified: obtainability → players who don't have that achievement · shutdown → players below 100% · tags → nobody.",
   "Changes are published in about 1 minute (✅ on the message, or ❌ with the reason). In the app: Settings → Sync now, or it updates on its own within the hour.",
 ].join("\n");
 
@@ -197,12 +227,13 @@ async function handleCommand(interaction, env, ctx) {
   }
   if (name === "tag" && sub === "list") {
     const tags = feed.tags ?? {};
-    const lines = [...BUILTIN.map((k) => `\`${k}\` (built-in)`)];
+    const lines = [...BUILTIN_TAGS.map((k) => `\`${k}\` (built-in)`)];
     for (const k of Object.keys(tags).sort()) {
+      if (BUILTIN_TAGS.includes(k)) continue;
       const t = tags[k];
-      lines.push(`\`${k}\` — ${t.label_en || k} / ${t.label_pt || "—"}${t.breaks_100 ? " · breaks 100%" : ""}`);
+      lines.push(`\`${k}\` — ${t.label_en || k} / ${t.label_pt || "—"}`);
     }
-    return reply("**Types**\n" + lines.join("\n"));
+    return reply("**Tags** (never notify)\n" + lines.join("\n"));
   }
 
   // O sync só lê o canal de admins: confirmação em outro canal nunca seria aplicada.
@@ -219,14 +250,21 @@ async function handleCommand(interaction, env, ctx) {
 }
 
 async function handleAutocomplete(interaction, env) {
-  const { values } = optionsOf(interaction.data);
   const focused = (interaction.data.options ?? []).flatMap((o) => (o.type === 1 ? o.options ?? [] : [o])).find((o) => o.focused);
-  const typed = String(focused?.value ?? values.type ?? values.status ?? "").toLowerCase();
+  // Listas separadas por vírgula: completa só o último item.
+  const typed = String(focused?.value ?? "");
+  const parts = typed.split(",");
+  const last = parts.pop().trim().toLowerCase();
+  const prefix = parts.map((p) => p.trim()).filter(Boolean);
   const feed = await loadFeed(env.FEED_URL);
-  const choices = allTypes(feed)
-    .filter((t) => t.includes(typed))
+  const choices = allTags(feed)
+    .filter((t) => t.includes(last) && !prefix.includes(t))
     .slice(0, 25)
-    .map((t) => ({ name: feed.tags?.[t]?.label_en ? `${t} — ${feed.tags[t].label_en}`.slice(0, 100) : t, value: t }));
+    .map((t) => {
+      const value = [...prefix, t].join(",");
+      const label = feed.tags?.[t]?.label_en ? `${value} — ${feed.tags[t].label_en}` : value;
+      return { name: label.slice(0, 100), value: value.slice(0, 100) };
+    });
   return json({ type: AUTOCOMPLETE_RESULT, data: { choices } });
 }
 
