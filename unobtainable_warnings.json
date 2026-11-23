@@ -1,5 +1,28 @@
 {
   "version": 1,
-  "updated_at": 0,
-  "games": {}
+  "updated_at": 1795460980,
+  "games": {
+    "366260": {
+      "revision": 1,
+      "status": "unobtainable_100",
+      "shutdown_info": {
+        "is_shutdown": false,
+        "shutdown_date": null,
+        "scope": null
+      },
+      "summary_en": "[TEST] One achievement (MS2_015) is reported as broken, so 100% can't be reached right now.",
+      "summary_pt": "[TESTE] Uma conquista (MS2_015) está quebrada, então o 100% não pode ser alcançado no momento.",
+      "achievements": {
+        "MS2_015": {
+          "type": "unobtainable_100",
+          "tags": [
+            "broken",
+            "unobtainable"
+          ],
+          "note_en": "[TEST] Reported as broken: doesn't unlock.",
+          "note_pt": "[TESTE] Reportada como quebrada: não desbloqueia."
+        }
+      }
+    }
+  }
 }
