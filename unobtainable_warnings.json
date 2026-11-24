@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795560948,
+  "updated_at": 1795560977,
   "games": {
     "366260": {
       "revision": 2,
@@ -202,19 +202,19 @@
       "status": "developer_required"
     },
     "440": {
-      "revision": 1,
+      "revision": 2,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
         "TF_REPLAY_YOUTUBE_VIEWS_TIER1": {
-          "obtainability": "unobtainable",
+          "obtainability": "broken_but_obtainable",
           "tags": [],
           "note_en": "",
           "note_pt": "",
-          "type": "unobtainable_100"
+          "type": "partial_broken"
         }
       },
-      "status": "unobtainable_100"
+      "status": "partial_broken"
     }
   },
   "tags": {
