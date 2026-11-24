@@ -7,9 +7,9 @@ compatibility_date = "2024-11-01"
 [vars]
 DISCORD_PUBLIC_KEY = "6ad29209ac6c3e2c0d78a0631df3eec307cd8a785e7ca9959dfde443f32657e2"
 DISCORD_APPLICATION_ID = "1574481159566532658"
-# Admins (ADMIN_USER_IDS) ficam num SECRET do Worker, junto com a variável
-# DISCORD_ADMIN_USER_IDS do GitHub: use tools/discord-admins.ps1 (repositório do app).
-ADMIN_ROLE_ID = ""
+# Quem pode usar os comandos: quem tem o cargo ADMIN_ROLE_ID no Discord. Fica num SECRET do
+# Worker (junto com a variável DISCORD_ADMIN_ROLE_ID do GitHub); troque com
+# tools/discord-admins.ps1 -Role <id> (repositório do app).
 # Canal lido pelo sync (#admins-flag): comandos que mudam o feed só valem aqui.
 ADMIN_CHANNEL_ID = "1574481789932675215"
 FEED_URL = "https://raw.githubusercontent.com/pedrooapp/achievement-tracker-releases/main/unobtainable_warnings.json"

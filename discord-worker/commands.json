@@ -2,107 +2,278 @@
   {
     "name": "ach",
     "description": "Mark one achievement: obtainability, tags, shutdown link and note",
-    "default_member_permissions": "0",
     "options": [
-      { "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 },
-      { "type": 3, "name": "api_name", "description": "Achievement API name", "required": true, "max_length": 100 },
+      {
+        "type": 4,
+        "name": "appid",
+        "description": "Steam AppID",
+        "required": true,
+        "min_value": 1
+      },
+      {
+        "type": 3,
+        "name": "api_name",
+        "description": "Achievement API name",
+        "required": true,
+        "max_length": 100
+      },
       {
         "type": 3,
         "name": "obtainability",
         "description": "Can it be unlocked? (notifies players who don't have it)",
         "required": false,
         "choices": [
-          { "name": "Unobtainable", "value": "unobtainable" },
-          { "name": "Possibly obtainable", "value": "possibly_obtainable" },
-          { "name": "Broken but obtainable", "value": "broken_but_obtainable" },
-          { "name": "None (clear)", "value": "none" }
+          {
+            "name": "Unobtainable",
+            "value": "unobtainable"
+          },
+          {
+            "name": "Possibly obtainable",
+            "value": "possibly_obtainable"
+          },
+          {
+            "name": "Broken but obtainable",
+            "value": "broken_but_obtainable"
+          },
+          {
+            "name": "None (clear)",
+            "value": "none"
+          }
         ]
       },
-      { "type": 3, "name": "add_tags", "description": "Add tags, comma-separated (mp_required, dlc_required… or a new one). Never notify", "required": false, "max_length": 120, "autocomplete": true },
-      { "type": 3, "name": "remove_tags", "description": "Remove tags, comma-separated", "required": false, "max_length": 120, "autocomplete": true },
-      { "type": 3, "name": "tags", "description": "Replace all tags (comma-separated)", "required": false, "max_length": 120, "autocomplete": true },
-      { "type": 5, "name": "shutdown", "description": "Breaks when the game's servers shut down (/shutdown)", "required": false },
-      { "type": 3, "name": "en", "description": "Note in English (optional)", "required": false, "max_length": 300 },
-      { "type": 3, "name": "pt", "description": "Nota em português (opcional)", "required": false, "max_length": 300 }
+      {
+        "type": 3,
+        "name": "add_tags",
+        "description": "Add tags, comma-separated (mp_required, dlc_required… or a new one). Never notify",
+        "required": false,
+        "max_length": 120,
+        "autocomplete": true
+      },
+      {
+        "type": 3,
+        "name": "remove_tags",
+        "description": "Remove tags, comma-separated",
+        "required": false,
+        "max_length": 120,
+        "autocomplete": true
+      },
+      {
+        "type": 3,
+        "name": "tags",
+        "description": "Replace all tags (comma-separated)",
+        "required": false,
+        "max_length": 120,
+        "autocomplete": true
+      },
+      {
+        "type": 5,
+        "name": "shutdown",
+        "description": "Breaks when the game's servers shut down (/shutdown)",
+        "required": false
+      },
+      {
+        "type": 3,
+        "name": "en",
+        "description": "Note in English (optional)",
+        "required": false,
+        "max_length": 300
+      },
+      {
+        "type": 3,
+        "name": "pt",
+        "description": "Nota em português (opcional)",
+        "required": false,
+        "max_length": 300
+      }
     ]
   },
   {
     "name": "shutdown",
     "description": "Servers shutting down on a date (warning before, broken after). Notifies players below 100%",
-    "default_member_permissions": "0",
     "options": [
-      { "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 },
-      { "type": 3, "name": "date", "description": "YYYY-MM-DD, or now (already shut down), or remove", "required": true, "max_length": 10 },
-      { "type": 3, "name": "scope", "description": "What shuts down (e.g. online mode)", "required": false, "max_length": 80 },
-      { "type": 3, "name": "achievements", "description": "API names that break, comma-separated (default: mp_required ones)", "required": false, "max_length": 300 },
-      { "type": 3, "name": "en", "description": "Game summary in English (optional)", "required": false, "max_length": 300 },
-      { "type": 3, "name": "pt", "description": "Resumo do jogo em português (opcional)", "required": false, "max_length": 300 }
+      {
+        "type": 4,
+        "name": "appid",
+        "description": "Steam AppID",
+        "required": true,
+        "min_value": 1
+      },
+      {
+        "type": 3,
+        "name": "date",
+        "description": "YYYY-MM-DD, or now (already shut down), or remove",
+        "required": true,
+        "max_length": 10
+      },
+      {
+        "type": 3,
+        "name": "scope",
+        "description": "What shuts down (e.g. online mode)",
+        "required": false,
+        "max_length": 80
+      },
+      {
+        "type": 3,
+        "name": "achievements",
+        "description": "API names that break, comma-separated (default: mp_required ones)",
+        "required": false,
+        "max_length": 300
+      },
+      {
+        "type": 3,
+        "name": "en",
+        "description": "Game summary in English (optional)",
+        "required": false,
+        "max_length": 300
+      },
+      {
+        "type": 3,
+        "name": "pt",
+        "description": "Resumo do jogo em português (opcional)",
+        "required": false,
+        "max_length": 300
+      }
     ]
   },
   {
     "name": "game",
     "description": "Game summary, or obtainability for the whole game (when the achievement isn't known)",
-    "default_member_permissions": "0",
     "options": [
-      { "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 },
+      {
+        "type": 4,
+        "name": "appid",
+        "description": "Steam AppID",
+        "required": true,
+        "min_value": 1
+      },
       {
         "type": 3,
         "name": "obtainability",
         "description": "Whole-game obtainability (optional)",
         "required": false,
         "choices": [
-          { "name": "Unobtainable", "value": "unobtainable" },
-          { "name": "Possibly obtainable", "value": "possibly_obtainable" },
-          { "name": "Broken but obtainable", "value": "broken_but_obtainable" },
-          { "name": "None (clear)", "value": "none" }
+          {
+            "name": "Unobtainable",
+            "value": "unobtainable"
+          },
+          {
+            "name": "Possibly obtainable",
+            "value": "possibly_obtainable"
+          },
+          {
+            "name": "Broken but obtainable",
+            "value": "broken_but_obtainable"
+          },
+          {
+            "name": "None (clear)",
+            "value": "none"
+          }
         ]
       },
-      { "type": 3, "name": "en", "description": "Summary in English (optional: the app writes one)", "required": false, "max_length": 300 },
-      { "type": 3, "name": "pt", "description": "Resumo em português (opcional)", "required": false, "max_length": 300 }
+      {
+        "type": 3,
+        "name": "en",
+        "description": "Summary in English (optional: the app writes one)",
+        "required": false,
+        "max_length": 300
+      },
+      {
+        "type": 3,
+        "name": "pt",
+        "description": "Resumo em português (opcional)",
+        "required": false,
+        "max_length": 300
+      }
     ]
   },
   {
     "name": "remove",
     "description": "Remove a game's warning, or just one achievement",
-    "default_member_permissions": "0",
     "options": [
-      { "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 },
-      { "type": 3, "name": "api_name", "description": "Only this achievement (optional)", "required": false, "max_length": 100 }
+      {
+        "type": 4,
+        "name": "appid",
+        "description": "Steam AppID",
+        "required": true,
+        "min_value": 1
+      },
+      {
+        "type": 3,
+        "name": "api_name",
+        "description": "Only this achievement (optional)",
+        "required": false,
+        "max_length": 100
+      }
     ]
   },
   {
     "name": "show",
     "description": "Show what is published for a game",
-    "default_member_permissions": "0",
-    "options": [{ "type": 4, "name": "appid", "description": "Steam AppID", "required": true, "min_value": 1 }]
+    "options": [
+      {
+        "type": 4,
+        "name": "appid",
+        "description": "Steam AppID",
+        "required": true,
+        "min_value": 1
+      }
+    ]
   },
   {
     "name": "tag",
     "description": "Names for your own achievement tags (tags never notify)",
-    "default_member_permissions": "0",
     "options": [
       {
         "type": 1,
         "name": "add",
         "description": "Create a tag or change its name",
         "options": [
-          { "type": 3, "name": "key", "description": "Lowercase key, e.g. needs_coop", "required": true, "max_length": 32 },
-          { "type": 3, "name": "en", "description": "Name in English (optional: made from the key)", "required": false, "max_length": 60 },
-          { "type": 3, "name": "pt", "description": "Nome em português", "required": false, "max_length": 60 }
+          {
+            "type": 3,
+            "name": "key",
+            "description": "Lowercase key, e.g. needs_coop",
+            "required": true,
+            "max_length": 32
+          },
+          {
+            "type": 3,
+            "name": "en",
+            "description": "Name in English (optional: made from the key)",
+            "required": false,
+            "max_length": 60
+          },
+          {
+            "type": 3,
+            "name": "pt",
+            "description": "Nome em português",
+            "required": false,
+            "max_length": 60
+          }
         ]
       },
       {
         "type": 1,
         "name": "remove",
         "description": "Delete a tag name (only if no achievement uses it)",
-        "options": [{ "type": 3, "name": "key", "description": "Tag key", "required": true, "max_length": 32 }]
+        "options": [
+          {
+            "type": 3,
+            "name": "key",
+            "description": "Tag key",
+            "required": true,
+            "max_length": 32
+          }
+        ]
       },
-      { "type": 1, "name": "list", "description": "List all tags" }
+      {
+        "type": 1,
+        "name": "list",
+        "description": "List all tags"
+      }
     ]
   },
   {
     "name": "help",
-    "description": "How the warnings bot works",
-    "default_member_permissions": "0"
+    "description": "How the warnings bot works"
   }
 ]

@@ -98,15 +98,15 @@ the next sync.
 ## Setup reference
 
 - **GitHub** (this repo → Settings → Secrets and variables → Actions): secret `DISCORD_BOT_TOKEN`;
-  variables `DISCORD_CHANNEL_ID`, `DISCORD_ADMIN_USER_IDS` (comma-separated) and/or
-  `DISCORD_ADMIN_ROLE_ID`, `DISCORD_APPLICATION_ID`, `DISCORD_GUILD_ID`.
+  variables `DISCORD_CHANNEL_ID`, `DISCORD_ADMIN_ROLE_ID`, `DISCORD_APPLICATION_ID`, `DISCORD_GUILD_ID`.
 - **Cloudflare Worker** (`discord-worker/`): `npx wrangler deploy`. Instant sync: create a
   fine-grained GitHub token for this repository only, with **Actions: Read and write**, then run
   `npx wrangler secret put GITHUB_DISPATCH_TOKEN` in `discord-worker/` and paste it. Settings live in
   `wrangler.toml` (no secrets: only Discord's *public* key).
-- **Admins** (who can flag): the list lives in the GitHub variable `DISCORD_ADMIN_USER_IDS` and
-  in the Worker secret `ADMIN_USER_IDS`. Update both at once with `tools/discord-admins.ps1`
-  in the app repo: `-Add <discord user id>`, `-Remove <id>`, or no arguments to list them.
+- **Admins** (who can flag): everyone with the Discord role `1574927607231815760`. Give or take the role in
+  Discord (Server Settings → Members) and it applies right away: no IDs to configure. The role
+  lives in the GitHub variable `DISCORD_ADMIN_ROLE_ID` and in the Worker secret `ADMIN_ROLE_ID`;
+  to switch to another role run `tools/discord-admins.ps1 -Role <role id>` in the app repo.
 - **Discord Developer Portal** → General Information → *Interactions Endpoint URL* = the
   Worker URL. Message Content Intent must stay on (for text commands).
 - **Slash commands**: after changing `discord-worker/commands.json`, run

@@ -5,8 +5,8 @@
 # Configuração (Settings → Secrets and variables → Actions deste repositório):
 #   Secret   DISCORD_BOT_TOKEN        token do bot (Discord Developer Portal → Bot → Reset Token)
 #   Variable DISCORD_CHANNEL_ID       ID do canal de administração
-#   Variable DISCORD_ADMIN_USER_IDS   IDs de usuário autorizados, separados por vírgula
-#   Variable DISCORD_ADMIN_ROLE_ID    (opcional) ID do cargo de admins
+#   Variable DISCORD_ADMIN_ROLE_ID    ID do cargo que pode usar os comandos
+#   Variable DISCORD_ADMIN_USER_IDS   (opcional) IDs de usuário extras, separados por vírgula
 #   Variable DISCORD_APPLICATION_ID   ID do app (para aplicar as respostas do Worker aos comandos de barra)
 # Sem o token/canal o job só avisa e termina. Comandos: veja WARNINGS.md.
 name: Discord warnings sync
