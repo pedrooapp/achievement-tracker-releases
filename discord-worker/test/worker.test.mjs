@@ -2,7 +2,7 @@
 // Rodar:  node --test releases-repo/discord-worker/test/worker.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
-import worker, { toTextCommand } from "../src/index.js";
+import worker, { isAdmin, toTextCommand } from "../src/index.js";
 
 const { publicKey, privateKey } = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 const rawPub = new Uint8Array(await crypto.subtle.exportKey("raw", publicKey));
@@ -174,4 +174,14 @@ test("produção: só o cargo libera (sem lista de IDs)", async () => {
   }
   // /help continua livre (só texto de ajuda).
   assert.match(await ask("x", [], "help", []), /Built-in tags/);
+});
+
+test("cargo no secret com espaço/quebra de linha (gravado pelo PowerShell) ainda vale", () => {
+  const ROLE = "1574927607231815760";
+  const member = (roles) => ({ member: { user: { id: "u" }, roles } });
+  for (const secret of [ROLE, `${ROLE}\r\n`, ` ${ROLE} `, `111, ${ROLE}`]) {
+    assert.equal(isAdmin(member([ROLE]), { ADMIN_ROLE_ID: secret }), true, JSON.stringify(secret));
+    assert.equal(isAdmin(member(["999"]), { ADMIN_ROLE_ID: secret }), false, JSON.stringify(secret));
+  }
+  assert.equal(isAdmin(member([ROLE]), {}), false, "sem cargo configurado ninguém passa");
 });

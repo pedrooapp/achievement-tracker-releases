@@ -723,7 +723,7 @@ def run() -> int:
     if not token or not channel:
         print("::warning::DISCORD_BOT_TOKEN / DISCORD_CHANNEL_ID not set — nothing to do.")
         return 0
-    admin_users = {u.strip() for u in env.get("DISCORD_ADMIN_USER_IDS", "").split(",") if u.strip()}
+    admin_users = set(re.split(r"[\s,;]+", env.get("DISCORD_ADMIN_USER_IDS", "").strip())) - {""}
     admin_role = env.get("DISCORD_ADMIN_ROLE_ID", "").strip() or None
     if not admin_users and not admin_role:
         print("::error::Set DISCORD_ADMIN_USER_IDS and/or DISCORD_ADMIN_ROLE_ID: without admins every command would be refused.")

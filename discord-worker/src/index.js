@@ -206,11 +206,14 @@ const HELP = [
   "Changes are published in about 1 minute (✅ on the message, or ❌ with the reason). In the app: Settings → Sync now, or it updates on its own within the hour.",
 ].join("\n");
 
-function isAdmin(interaction, env) {
+/** "id1, id2\r\n" → ["id1", "id2"]: o secret pode vir com espaço/quebra de linha do terminal. */
+export const idList = (v) => String(v ?? "").split(/[\s,;]+/).filter(Boolean);
+
+export function isAdmin(interaction, env) {
   const user = interaction.member?.user?.id ?? interaction.user?.id;
-  const admins = String(env.ADMIN_USER_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (user && admins.includes(user)) return true;
-  return Boolean(env.ADMIN_ROLE_ID && interaction.member?.roles?.includes(env.ADMIN_ROLE_ID));
+  if (user && idList(env.ADMIN_USER_IDS).includes(user)) return true;
+  const roles = interaction.member?.roles ?? [];
+  return idList(env.ADMIN_ROLE_ID).some((r) => roles.includes(r));
 }
 
 /** Dispara o workflow de sync (workflow_dispatch). Espera um pouco para a resposta já estar no canal. */
