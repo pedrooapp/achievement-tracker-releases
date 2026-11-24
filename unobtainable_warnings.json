@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "updated_at": 1795563007,
   "games": {
     "366260": {
@@ -24,7 +24,11 @@
       "shutdown_info": {
         "is_shutdown": true,
         "shutdown_date": "2027-01-31",
-        "scope": "Entire game"
+        "scope": "Entire game",
+        "achievement_scope": "none",
+        "target_achievements": [],
+        "summary_en": "",
+        "summary_pt": ""
       },
       "summary_en": "Servers are shutting down at Jan 31st, 2027",
       "summary_pt": "",
@@ -111,6 +115,12 @@
       "status": "unobtainable_100",
       "summary_en": "test",
       "summary_pt": "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
+      "all_achievements": {
+        "obtainability": "unobtainable",
+        "tags": [],
+        "note_en": "",
+        "note_pt": ""
+      },
       "obtainability": "unobtainable"
     },
     "1301210": {
@@ -118,14 +128,18 @@
       "summary_en": "",
       "summary_pt": "",
       "achievements": {},
-      "shutdown": {
-        "date": null,
-        "scope": null
-      },
       "status": "servers_shutdown",
       "shutdown_info": {
         "is_shutdown": true,
         "shutdown_date": null,
+        "scope": null,
+        "achievement_scope": "none",
+        "target_achievements": [],
+        "summary_en": "",
+        "summary_pt": ""
+      },
+      "shutdown": {
+        "date": null,
         "scope": null
       }
     },
@@ -134,14 +148,18 @@
       "summary_en": "",
       "summary_pt": "",
       "achievements": {},
-      "shutdown": {
-        "date": null,
-        "scope": null
-      },
       "status": "servers_shutdown",
       "shutdown_info": {
         "is_shutdown": true,
         "shutdown_date": null,
+        "scope": null,
+        "achievement_scope": "none",
+        "target_achievements": [],
+        "summary_en": "",
+        "summary_pt": ""
+      },
+      "shutdown": {
+        "date": null,
         "scope": null
       }
     },
@@ -221,14 +239,18 @@
       "summary_en": "",
       "summary_pt": "",
       "achievements": {},
-      "shutdown": {
-        "date": "2026-11-25",
-        "scope": null
-      },
       "status": "servers_shutdown",
       "shutdown_info": {
         "is_shutdown": true,
         "shutdown_date": "2026-11-25",
+        "scope": null,
+        "achievement_scope": "none",
+        "target_achievements": [],
+        "summary_en": "",
+        "summary_pt": ""
+      },
+      "shutdown": {
+        "date": "2026-11-25",
         "scope": null
       }
     },
@@ -237,14 +259,24 @@
       "summary_en": "",
       "summary_pt": "",
       "achievements": {},
-      "shutdown": {
-        "date": null,
-        "scope": null
-      },
       "status": "servers_shutdown",
       "shutdown_info": {
         "is_shutdown": true,
         "shutdown_date": null,
+        "scope": null,
+        "achievement_scope": "none",
+        "target_achievements": [],
+        "summary_en": "",
+        "summary_pt": ""
+      },
+      "all_achievements": {
+        "obtainability": "unobtainable",
+        "tags": [],
+        "note_en": "",
+        "note_pt": ""
+      },
+      "shutdown": {
+        "date": null,
         "scope": null
       },
       "obtainability": "unobtainable"

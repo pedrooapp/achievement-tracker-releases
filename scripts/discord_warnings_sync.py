@@ -7,28 +7,33 @@ disparado pelo Worker logo depois de cada comando de barra (e por agendamento, c
   3. aplica os comandos no feed e reage com ✅ (ou ❌ + resposta explicando o erro);
   4. grava o feed e o estado (última mensagem lida); o workflow faz commit no repositório público.
 
-Modelo do feed (version 2), por jogo (appid) e por conquista (apiname):
+Modelo do feed (version 3), por jogo (appid) e por conquista (apiname):
   - obtainability da conquista: unobtainable | possibly_obtainable | broken_but_obtainable
     (o app marca o jogo como "conquistas quebradas" sozinho e notifica quem ainda não tem a conquista);
-  - shutdown do jogo com data: antes = aviso de desligamento; na data = desligado (as conquistas
-    vinculadas viram quebradas). Notifica quem não tem 100%;
+  - all_achievements: obtenção/tags/nota que valem para TODAS as conquistas do jogo (alvo `all`);
+  - shutdown_info do jogo com data: antes = aviso de desligamento; na data = desligado. As
+    conquistas que quebram seguem achievement_scope: none | specific (target_achievements) | all.
+    Notifica quem não tem 100%;
   - tags da conquista (mp_required, dlc_required, unavailable, developer_required, date_sensitive
-    ou qualquer outra): só informativas, nunca notificam.
+    ou qualquer outra; `shutdown` não é tag): só informativas, nunca notificam.
+
+Alvos de conquista: um apiname, vários separados por `;` (ACH_1;ACH_2) ou `all`.
 
 Comandos (uma por mensagem; linhas "en:" / "pt:" opcionais logo abaixo):
 
-  !ach <appid> <API_NAME> [obtenção|none] [tags=a,b] [add=a,b] [del=a,b] [shutdown=yes|no]
+  !ach <appid> <ACH|ACH_1;ACH_2|all> [obtenção|none] [tags=a,b] [add=a,b] [del=a,b]
   en: nota em inglês
   pt: nota em português
 
-  !shutdown <appid> <AAAA-MM-DD|now|remove> [scope=texto] [achievements=A,B]
-  en: resumo / pt: resumo (opcionais: viram o resumo do jogo)
+  !shutdown <appid> <AAAA-MM-DD|now|remove> [scope=texto] [achievements=none|all|ACH_1;ACH_2]
+  en: resumo do shutdown / pt: resumo do shutdown
 
-  !game <appid> [obtainability=<obtenção>|none]   resumo do jogo (linhas en:/pt:) e obtenção
-                                                  do jogo inteiro (quando a conquista exata
-                                                  não é conhecida)
+  !removeshutdown <appid>      tira o shutdown do jogo
+  !game <appid> [obtainability=…] + en:/pt:      SÓ COMPATIBILIDADE (fora da ajuda e sem comando
+                                                  de barra): use `!ach <appid> all <obtenção>`;
+                                                  o resumo do jogo o app escreve sozinho
   !remove <appid>              remove o jogo inteiro
-  !remove <appid> <API_NAME>   remove só uma conquista
+  !remove <appid> <ACH|ACH_1;ACH_2|all>   remove só essas conquistas (all = a marcação de todas)
   !show <appid>                responde com o que está publicado para o jogo
   !tag add <chave>             nome de uma tag (linhas en:/pt:); tags novas também são criadas
                                sozinhas ao serem usadas em !ach
@@ -36,10 +41,10 @@ Comandos (uma por mensagem; linhas "en:" / "pt:" opcionais logo abaixo):
   !tags                        lista as tags
   !help                        lista os comandos
 
-Comandos antigos continuam aceitos: `!ach <appid> <API> unobtainable_100|partial_broken|
-servers_shutdown|<tag>` e `!game <appid> servers_shutdown|unobtainable_100|partial_broken
-[shutdown=AAAA-MM-DD]`. O feed também guarda os campos antigos (`status`, `type`,
-`shutdown_info`), derivados do modelo novo, para versões antigas do app.
+Comandos antigos continuam aceitos (ex.: `!ach <appid> <API> unobtainable_100|partial_broken|
+<tag>`, `!ach … shutdown=yes`, `!game <appid> servers_shutdown shutdown=AAAA-MM-DD`). O feed também
+guarda os campos dos formatos anteriores (v2: `shutdown`, `obtainability` do jogo; v1: `status`,
+`type`, `shutdown_info.is_shutdown/shutdown_date/scope`) para versões antigas do app.
 
 Comandos de barra (/ach, /shutdown, /game…) são respondidos na hora por um Cloudflare Worker,
 que posta a confirmação no canal num bloco ```text com o comando equivalente; este script
@@ -63,21 +68,23 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-FEED_VERSION = 2
+FEED_VERSION = 3
 OBTAINABILITY = ("unobtainable", "possibly_obtainable", "broken_but_obtainable")
 BUILTIN_TAGS = ("mp_required", "dlc_required", "unavailable", "developer_required", "date_sensitive")
 # Tipos do formato antigo.
 LEGACY_OBTAINABILITY = {"unobtainable_100": "unobtainable", "partial_broken": "broken_but_obtainable"}
 TAG_KEY = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
+API_NAME = re.compile(r"^[^\s;]{1,100}$")
 API = "https://discord.com/api/v10"
 USER_AGENT = "DiscordBot (https://github.com/pedrooapp/achievement-tracker-releases, 1.0)"
 MAX_REPLY = 1900
 
 HELP = """**Achievement Tracker — warnings commands**
-`!ach <appid> <API_NAME> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b] [shutdown=yes|no]` + lines `en: …` / `pt: …` (note)
-`!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=A,B]` + lines `en:` / `pt:` (summary)
-`!game <appid> [obtainability=…|none]` + lines `en:` / `pt:` (game summary)
-`!remove <appid>` · `!remove <appid> <API_NAME>` · `!show <appid>` · `!help`
+Targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all`.
+`!ach <appid> <targets> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b]` + lines `en: …` / `pt: …` (note)
+`!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=none|all|ACH_1;ACH_2]` + lines `en:` / `pt:` (shutdown summary)
+`!removeshutdown <appid>`
+`!remove <appid>` · `!remove <appid> <targets>` · `!show <appid>` · `!help`
 `!tag add <key>` + lines `en: Name` / `pt: Nome` · `!tag remove <key>` · `!tags`
 Obtainability notifies players who don't have the achievement · shutdown notifies players below 100% · tags never notify.
 Tags: """ + ", ".join(BUILTIN_TAGS) + " + any new key (`!tags`)"
@@ -104,7 +111,10 @@ def parse_command(content: str) -> Command | None:
     lines = [ln.strip() for ln in content.strip().splitlines()]
     if not lines or not lines[0].startswith("!"):
         return None
-    head = lines[0][1:].split()
+    # "A ; B" e "achievements= A" viram "A;B" e "achievements=A" (listas de conquistas com espaço).
+    first = re.sub(r"\s*;\s*", ";", lines[0][1:])
+    first = re.sub(r"(?<=\w)=\s+(?=\S)", "=", first)
+    head = first.split()
     if not head:
         return None
     name = head[0].lower()
@@ -151,6 +161,32 @@ def _date(text: str) -> str:
         raise CommandError(f"`{text}` is not a date in YYYY-MM-DD format.") from e
 
 
+def split_targets(text: str) -> list[str]:
+    """`" ACH_1 ; ACH_2 ; ACH_1 "` → `["ACH_1", "ACH_2"]` (também aceita vírgula)."""
+    out: list[str] = []
+    for part in re.split(r"[;,]", text or ""):
+        part = part.strip()
+        if part and part not in out:
+            out.append(part)
+    return out
+
+
+def _targets(text: str, allow_none: bool = False) -> str | list[str]:
+    """Alvo de conquistas: `"all"`, `"none"` (se permitido) ou a lista de apinames."""
+    low = (text or "").strip().lower()
+    if low == "all":
+        return "all"
+    if allow_none and low in ("none", ""):
+        return "none"
+    names = split_targets(text)
+    if not names:
+        raise CommandError("Give at least one achievement API name (several with `;`, e.g. `ACH_1;ACH_2`) or `all`.")
+    for name in names:
+        if not API_NAME.match(name):
+            raise CommandError(f"`{name}` is not a valid API name (no spaces).")
+    return names
+
+
 def _obtainability(text: str) -> str | None:
     """`none` → None; valor antigo é traduzido; senão tem de ser uma das 3 categorias."""
     low = text.lower()
@@ -164,7 +200,7 @@ def _obtainability(text: str) -> str | None:
 
 def _tag_key(text: str) -> str:
     key = text.strip().lower().replace("-", "_").replace(" ", "_")
-    if key in OBTAINABILITY or key in LEGACY_OBTAINABILITY or key in ("servers_shutdown", "shutdown"):
+    if key in OBTAINABILITY or key in LEGACY_OBTAINABILITY or key in ("servers_shutdown", "shutdown", "shut_down"):
         raise CommandError(f"`{key}` is not a tag. Use obtainability (`unobtainable`…) or `!shutdown` instead.")
     if not TAG_KEY.match(key):
         raise CommandError(f"Tag `{text}`: use lowercase letters, numbers and `_` (2–32 chars), starting with a letter. Ex.: `mp_required`.")
@@ -184,7 +220,8 @@ def _tag_list(text: str) -> list[str]:
 def _uses_tag(feed: dict, key: str) -> list[str]:
     used = []
     for app_id, game in feed.get("games", {}).items():
-        if any(key in a.get("tags", []) for a in game.get("achievements", {}).values()):
+        marks = list(game.get("achievements", {}).values()) + [game.get("all_achievements") or {}]
+        if any(key in a.get("tags", []) for a in marks):
             used.append(app_id)
     return used
 
@@ -199,7 +236,7 @@ def _ensure_tag(feed: dict, key: str) -> None:
     tag["breaks_100"] = False
 
 
-# ---------------------------------------------------------------- modelo novo ↔ formato antigo
+# ---------------------------------------------------------------- modelo novo ↔ formatos antigos
 
 
 def _touch(game: dict) -> None:
@@ -207,65 +244,108 @@ def _touch(game: dict) -> None:
 
 
 def migrate(feed: dict) -> bool:
-    """Feed version 1 (status/type/shutdown_info) → version 2. Devolve True se mudou."""
-    if int(feed.get("version", 1)) >= FEED_VERSION:
+    """Feed v1/v2 → v3. Devolve True se mudou. Não sobe revisões (ninguém é notificado de novo)."""
+    version = int(feed.get("version", 1))
+    if version >= FEED_VERSION:
         return False
     for game in feed.get("games", {}).values():
-        status = game.get("status")
-        info = game.get("shutdown_info") or {}
-        if status == "servers_shutdown" or info.get("is_shutdown"):
-            game["shutdown"] = {"date": info.get("shutdown_date"), "scope": info.get("scope")}
-        for ach in game.get("achievements", {}).values():
-            kind = ach.get("type", "")
-            tags = [t for t in ach.get("tags", []) if t not in ("broken", "unobtainable", "shutdown")]
-            if kind in LEGACY_OBTAINABILITY:
-                ach["obtainability"] = LEGACY_OBTAINABILITY[kind]
-            elif kind == "servers_shutdown":
-                ach["shutdown"] = True
-            elif kind and kind not in tags:
-                tags.insert(0, kind)
-            ach["tags"] = [_tag_key(t) for t in tags if TAG_KEY.match(t.lower())]
+        achievements = game.setdefault("achievements", {})
+        if version < 2:
+            status = game.get("status")
+            info = game.get("shutdown_info") or {}
+            if status == "servers_shutdown" or info.get("is_shutdown"):
+                game["shutdown"] = {"date": info.get("shutdown_date"), "scope": info.get("scope")}
+            for ach in achievements.values():
+                kind = ach.get("type", "")
+                tags = [t for t in ach.get("tags", []) if t not in ("broken", "unobtainable", "shutdown")]
+                if kind in LEGACY_OBTAINABILITY:
+                    ach["obtainability"] = LEGACY_OBTAINABILITY[kind]
+                elif kind == "servers_shutdown":
+                    ach["shutdown"] = True
+                elif kind and kind not in tags:
+                    tags.insert(0, kind)
+                ach["tags"] = tags
+            if status in LEGACY_OBTAINABILITY and not any(a.get("obtainability") for a in achievements.values()):
+                game["obtainability"] = LEGACY_OBTAINABILITY[status]
+        # v2 → v3
+        old = game.pop("shutdown", None)
+        if old is not None:
+            targets = sorted(api for api, a in achievements.items() if a.get("shutdown"))
+            game["shutdown_info"] = {
+                "is_shutdown": True,
+                "shutdown_date": old.get("date"),
+                "scope": old.get("scope"),
+                "achievement_scope": "specific" if targets else "none",
+                "target_achievements": targets,
+                "summary_en": "",
+                "summary_pt": "",
+            }
+        else:
+            game.pop("shutdown_info", None)
+        whole = game.pop("obtainability", None)
+        if whole:
+            game["all_achievements"] = {"obtainability": whole, "tags": [], "note_en": "", "note_pt": ""}
+        for api in list(achievements):
+            ach = achievements[api]
+            ach.pop("shutdown", None)
+            ach["tags"] = [_tag_key(t) for t in ach.get("tags", []) if TAG_KEY.match(t.lower()) and t.lower() not in ("shutdown",)]
             for t in ach["tags"]:
                 _ensure_tag(feed, t)
-        has_ach_obtainability = any(a.get("obtainability") for a in game.get("achievements", {}).values())
-        if status in LEGACY_OBTAINABILITY and not has_ach_obtainability:
-            game["obtainability"] = LEGACY_OBTAINABILITY[status]
+            ach.setdefault("note_en", "")
+            ach.setdefault("note_pt", "")
+            if not (ach.get("obtainability") or ach["tags"] or ach["note_en"] or ach["note_pt"]):
+                del achievements[api]
         _write_legacy(game)
     for tag in feed.get("tags", {}).values():
-        tag["breaks_100"] = False  # tags não notificam mais
+        tag["breaks_100"] = False  # tags não notificam
     feed["version"] = FEED_VERSION
     return True
 
 
 def _write_legacy(game: dict) -> None:
-    """Campos antigos derivados do modelo novo, para versões antigas do app continuarem mostrando."""
-    achievements = game.get("achievements", {})
-    for ach in achievements.values():
+    """Campos dos formatos anteriores, derivados do v3, para versões antigas do app continuarem mostrando."""
+    achievements = game.setdefault("achievements", {})
+    info = game.get("shutdown_info")
+    targets = info.get("target_achievements", []) if info and info.get("achievement_scope") == "specific" else []
+    whole = (game.get("all_achievements") or {}).get("obtainability")
+    # v2 (app v0.2.14/15): shutdown {date, scope}, obtainability do jogo, conquista com shutdown=true.
+    if info:
+        game["shutdown"] = {"date": info.get("shutdown_date"), "scope": info.get("scope")}
+    else:
+        game.pop("shutdown", None)
+    if whole:
+        game["obtainability"] = whole
+    else:
+        game.pop("obtainability", None)
+    for api, ach in achievements.items():
+        if api in targets:
+            ach["shutdown"] = True
+        else:
+            ach.pop("shutdown", None)
+    # v1 (app até v0.2.13): type da conquista, status do jogo (shutdown_info já tem is_shutdown/shutdown_date/scope).
+    for api, ach in achievements.items():
         o = ach.get("obtainability")
         if o == "unobtainable":
             ach["type"] = "unobtainable_100"
         elif o in ("possibly_obtainable", "broken_but_obtainable"):
             ach["type"] = "partial_broken"
-        elif ach.get("shutdown"):
+        elif api in targets:
             ach["type"] = "servers_shutdown"
         else:
             ach["type"] = (ach.get("tags") or [""])[0]
     kinds = [a["type"] for a in achievements.values()]
-    shutdown = game.get("shutdown")
-    if shutdown is not None:
+    if info:
         game["status"] = "servers_shutdown"
-        game["shutdown_info"] = {"is_shutdown": True, "shutdown_date": shutdown.get("date"), "scope": shutdown.get("scope")}
+    elif whole == "unobtainable" or "unobtainable_100" in kinds:
+        game["status"] = "unobtainable_100"
+    elif whole or "partial_broken" in kinds:
+        game["status"] = "partial_broken"
     else:
-        game.pop("shutdown_info", None)
-        whole = game.get("obtainability")
-        if whole == "unobtainable" or "unobtainable_100" in kinds:
-            game["status"] = "unobtainable_100"
-        elif whole or "partial_broken" in kinds:
-            game["status"] = "partial_broken"
+        status = next((k for k in kinds if k in ("mp_required", "dlc_required")), None) or next((k for k in kinds if k), None)
+        if status:
+            game["status"] = status
         else:
-            game["status"] = next((k for k in kinds if k in ("mp_required", "dlc_required")), None) or next((k for k in kinds if k), None)
-        if game["status"] is None:
-            game.pop("status")
+            game.pop("status", None)
 
 
 def _game(games: dict, app_id: str) -> dict:
@@ -274,6 +354,55 @@ def _game(games: dict, app_id: str) -> dict:
     game.setdefault("summary_en", "")
     game.setdefault("summary_pt", "")
     return game
+
+
+def _is_empty_mark(mark: dict) -> bool:
+    return not (mark.get("obtainability") or mark.get("tags") or mark.get("note_en") or mark.get("note_pt"))
+
+
+def _apply_mark(feed: dict, mark: dict, cmd: Command, kind: str | None) -> None:
+    """Obtenção / tags / nota numa marcação (uma conquista ou `all_achievements`)."""
+    tags: list[str] = list(mark.get("tags", []))
+    if kind is not None:
+        if kind in ("none", "clear", "-") or kind in OBTAINABILITY or kind in LEGACY_OBTAINABILITY:
+            o = _obtainability(kind)
+            if o:
+                mark["obtainability"] = o
+            else:
+                mark["obtainability"] = None
+        else:  # formato antigo: o "tipo" era uma tag (mp_required, dlc_required, tag nova…)
+            key = _tag_key(kind)
+            if key not in tags:
+                tags.append(key)
+    if "obtainability" in cmd.options:
+        mark["obtainability"] = _obtainability(cmd.options["obtainability"])
+    if "tags" in cmd.options:
+        tags = _tag_list(cmd.options["tags"])
+    for key in _tag_list(cmd.options.get("add", "")):
+        if key not in tags:
+            tags.append(key)
+    removing = _tag_list(cmd.options.get("del", "")) + _tag_list(cmd.options.get("remove", ""))
+    mark["tags"] = [t for t in tags if t not in removing]
+    for t in mark["tags"]:
+        _ensure_tag(feed, t)
+    if not mark.get("obtainability"):
+        mark.pop("obtainability", None)
+    if cmd.en:
+        mark["note_en"] = cmd.en
+    if cmd.pt:
+        mark["note_pt"] = cmd.pt
+    mark.setdefault("note_en", "")
+    mark.setdefault("note_pt", "")
+
+
+def _set_shutdown_targets(game: dict, scope: str | list[str]) -> None:
+    info = game["shutdown_info"]
+    if scope == "all":
+        info["achievement_scope"], info["target_achievements"] = "all", []
+    elif scope == "none" or not scope:
+        info["achievement_scope"], info["target_achievements"] = "none", []
+    else:
+        info["achievement_scope"], info["target_achievements"] = "specific", list(scope)
 
 
 def apply_command(feed: dict, cmd: Command, now: int) -> str | None:
@@ -299,11 +428,14 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
         if app_id not in games:
             return f"No warning published for `{app_id}`."
         shown = json.loads(json.dumps(games[app_id]))
-        # Sem os campos antigos (só existem para versões antigas do app).
-        shown.pop("status", None)
-        shown.pop("shutdown_info", None)
+        # Sem os campos dos formatos antigos (só existem para versões antigas do app).
+        for k in ("status", "shutdown", "obtainability"):
+            shown.pop(k, None)
+        if shown.get("shutdown_info"):
+            shown["shutdown_info"].pop("is_shutdown", None)
         for a in shown.get("achievements", {}).values():
             a.pop("type", None)
+            a.pop("shutdown", None)
         text = json.dumps(shown, ensure_ascii=False, indent=2)
         if len(text) > MAX_REPLY - 20:
             text = text[: MAX_REPLY - 40] + "\n…"
@@ -312,82 +444,76 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
     if cmd.name == "ach":
         if len(cmd.args) not in (2, 3):
             raise CommandError(
-                "Usage: `!ach <appid> <API_NAME> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b] [shutdown=yes|no]` + `en:` / `pt:` lines"
+                "Usage: `!ach <appid> <ACH|ACH_1;ACH_2|all> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b]` + `en:` / `pt:` lines"
             )
-        app_id, api_name = _app_id(cmd.args[0]), cmd.args[1]
+        app_id, targets = _app_id(cmd.args[0]), _targets(cmd.args[1])
+        kind = cmd.args[2].lower() if len(cmd.args) == 3 else None
         game = _game(games, app_id)
-        ach = game["achievements"].setdefault(api_name, {})
-        tags: list[str] = list(ach.get("tags", []))
-        if len(cmd.args) == 3:
-            kind = cmd.args[2].lower()
+        if targets == "all":
+            if kind == "servers_shutdown" or "shutdown" in cmd.options:
+                raise CommandError(f"For every achievement use `!shutdown {app_id} <date|now> achievements=all`.")
+            mark = game.get("all_achievements") or {}
+            _apply_mark(feed, mark, cmd, kind)
+            if _is_empty_mark(mark):
+                game.pop("all_achievements", None)
+            else:
+                game["all_achievements"] = mark
+        else:
+            link: bool | None = None
             if kind == "servers_shutdown":  # formato antigo
-                ach["shutdown"] = True
-            elif kind in ("none", "clear", "-") or kind in OBTAINABILITY or kind in LEGACY_OBTAINABILITY:
-                o = _obtainability(kind)
-                if o:
-                    ach["obtainability"] = o
+                link, kind = True, None
+            if "shutdown" in cmd.options:  # formato antigo: vincula ao shutdown do jogo
+                link = _yes(cmd.options["shutdown"])
+            for api in targets:
+                mark = game["achievements"].setdefault(api, {})
+                _apply_mark(feed, mark, cmd, kind)
+                if _is_empty_mark(mark):
+                    del game["achievements"][api]
+            if link is not None:
+                info = game.get("shutdown_info")
+                if not info:
+                    raise CommandError(f"`{app_id}` has no shutdown. Set it first: `!shutdown {app_id} <date|now> achievements={';'.join(targets)}`.")
+                current = info.get("target_achievements", []) if info.get("achievement_scope") == "specific" else []
+                if info.get("achievement_scope") == "all":
+                    if not link:
+                        raise CommandError("This shutdown affects every achievement. Change it with `!shutdown … achievements=…`.")
                 else:
-                    ach.pop("obtainability", None)
-            else:  # formato antigo: o "tipo" era uma tag (mp_required, dlc_required, tag nova…)
-                key = _tag_key(kind)
-                if key not in tags:
-                    tags.append(key)
-        if "obtainability" in cmd.options:
-            o = _obtainability(cmd.options["obtainability"])
-            if o:
-                ach["obtainability"] = o
-            else:
-                ach.pop("obtainability", None)
-        if "tags" in cmd.options:
-            tags = _tag_list(cmd.options["tags"])
-        for key in _tag_list(cmd.options.get("add", "")):
-            if key not in tags:
-                tags.append(key)
-        removing = _tag_list(cmd.options.get("del", "")) + _tag_list(cmd.options.get("remove", ""))
-        tags = [t for t in tags if t not in removing]
-        ach["tags"] = tags
-        for t in tags:
-            _ensure_tag(feed, t)
-        if "shutdown" in cmd.options:
-            if _yes(cmd.options["shutdown"]):
-                ach["shutdown"] = True
-            else:
-                ach.pop("shutdown", None)
-        if cmd.en:
-            ach["note_en"] = cmd.en
-        if cmd.pt:
-            ach["note_pt"] = cmd.pt
-        ach.setdefault("note_en", "")
-        ach.setdefault("note_pt", "")
-        # Nada sobrou na conquista: tira do feed.
-        if not (ach.get("obtainability") or ach.get("shutdown") or ach["tags"] or ach["note_en"] or ach["note_pt"]):
-            del game["achievements"][api_name]
+                    new = [a for a in current if a not in targets] + (targets if link else [])
+                    _set_shutdown_targets(game, new or "none")
         _write_legacy(game)
         _touch(game)
 
-    elif cmd.name == "shutdown":
-        if len(cmd.args) != 2:
-            raise CommandError("Usage: `!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=A,B]` + `en:` / `pt:` lines")
-        app_id, when = _app_id(cmd.args[0]), cmd.args[1].lower()
+    elif cmd.name in ("shutdown", "removeshutdown"):
+        removing = cmd.name == "removeshutdown"
+        if (removing and len(cmd.args) != 1) or (not removing and len(cmd.args) != 2):
+            raise CommandError(
+                "Usage: `!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=none|all|ACH_1;ACH_2]` + `en:` / `pt:` lines, or `!removeshutdown <appid>`"
+            )
+        app_id = _app_id(cmd.args[0])
+        when = "remove" if removing else cmd.args[1].lower()
         if when in ("remove", "none", "clear", "off"):
-            if app_id not in games or "shutdown" not in games[app_id]:
+            if app_id not in games or not games[app_id].get("shutdown_info"):
                 raise CommandError(f"`{app_id}` has no shutdown.")
             game = games[app_id]
-            del game["shutdown"]
+            del game["shutdown_info"]
         else:
             game = _game(games, app_id)
-            shutdown = game.get("shutdown") or {}
-            shutdown["date"] = None if when in ("now", "already", "yes") else _date(cmd.args[1])
+            info = game.get("shutdown_info") or {"achievement_scope": "none", "target_achievements": [], "summary_en": "", "summary_pt": "", "scope": None}
+            info["is_shutdown"] = True
+            info["shutdown_date"] = None if when in ("now", "already", "yes") else _date(cmd.args[1])
             if "scope" in cmd.options:
-                shutdown["scope"] = cmd.options["scope"] or None
-            shutdown.setdefault("scope", None)
-            game["shutdown"] = shutdown
-            for api in [a.strip() for a in cmd.options.get("achievements", "").split(",") if a.strip()]:
-                game["achievements"].setdefault(api, {"tags": [], "note_en": "", "note_pt": ""})["shutdown"] = True
-        if cmd.en:
-            game["summary_en"] = cmd.en
-        if cmd.pt:
-            game["summary_pt"] = cmd.pt
+                info["scope"] = cmd.options["scope"] or None
+            game["shutdown_info"] = info
+            if "achievements" in cmd.options:
+                _set_shutdown_targets(game, _targets(cmd.options["achievements"], allow_none=True))
+            info.setdefault("achievement_scope", "none")
+            info.setdefault("target_achievements", [])
+            if cmd.en:
+                info["summary_en"] = cmd.en
+            if cmd.pt:
+                info["summary_pt"] = cmd.pt
+            info.setdefault("summary_en", "")
+            info.setdefault("summary_pt", "")
         _write_legacy(game)
         _touch(game)
 
@@ -396,28 +522,38 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
             raise CommandError("Usage: `!game <appid> [obtainability=…|none]` + `en:` / `pt:` lines (game summary)")
         app_id = _app_id(cmd.args[0])
         game = _game(games, app_id)
+        whole: str | None | bool = False  # False = sem mudança
         if len(cmd.args) == 2:  # formato antigo: !game <appid> <status>
             status = cmd.args[1].lower()
             if status == "servers_shutdown":
-                shutdown = game.get("shutdown") or {"date": None, "scope": None}
-                if "shutdown" in cmd.options:
-                    shutdown["date"] = _date(cmd.options["shutdown"])
+                info = game.get("shutdown_info") or {"achievement_scope": "none", "target_achievements": [], "summary_en": "", "summary_pt": "", "scope": None}
+                info["is_shutdown"] = True
+                info["shutdown_date"] = _date(cmd.options["shutdown"]) if "shutdown" in cmd.options else info.get("shutdown_date")
                 if cmd.options.get("scope"):
-                    shutdown["scope"] = cmd.options["scope"]
-                game["shutdown"] = shutdown
+                    info["scope"] = cmd.options["scope"]
+                game["shutdown_info"] = info
             elif status in LEGACY_OBTAINABILITY or status in OBTAINABILITY:
-                game["obtainability"] = _obtainability(status)
+                whole = _obtainability(status)
             else:
                 raise CommandError(
-                    f"`{status}` is a tag: tags go on achievements (`!ach {app_id} <API_NAME> add={status}`). "
+                    f"`{status}` is a tag: tags go on achievements (`!ach {app_id} <API_NAME|all> add={status}`). "
                     "For the whole game use `obtainability=` or `!shutdown`."
                 )
         if "obtainability" in cmd.options:
-            o = _obtainability(cmd.options["obtainability"])
-            if o:
-                game["obtainability"] = o
+            whole = _obtainability(cmd.options["obtainability"])
+        if whole is not False:
+            mark = game.get("all_achievements") or {}
+            if whole:
+                mark["obtainability"] = whole
             else:
-                game.pop("obtainability", None)
+                mark.pop("obtainability", None)
+            mark.setdefault("tags", [])
+            mark.setdefault("note_en", "")
+            mark.setdefault("note_pt", "")
+            if _is_empty_mark(mark):
+                game.pop("all_achievements", None)
+            else:
+                game["all_achievements"] = mark
         if cmd.en:
             game["summary_en"] = cmd.en
         if cmd.pt:
@@ -427,19 +563,28 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
 
     elif cmd.name == "remove":
         if len(cmd.args) not in (1, 2):
-            raise CommandError("Usage: `!remove <appid>` or `!remove <appid> <API_NAME>`")
+            raise CommandError("Usage: `!remove <appid>` or `!remove <appid> <ACH|ACH_1;ACH_2|all>`")
         app_id = _app_id(cmd.args[0])
         if app_id not in games:
             raise CommandError(f"`{app_id}` has no published warning.")
         if len(cmd.args) == 1:
             del games[app_id]
         else:
-            achievements = games[app_id].get("achievements", {})
-            if cmd.args[1] not in achievements:
-                raise CommandError(f"`{cmd.args[1]}` has no warning in `{app_id}`.")
-            del achievements[cmd.args[1]]
-            _write_legacy(games[app_id])
-            _touch(games[app_id])
+            game = games[app_id]
+            targets = _targets(cmd.args[1])
+            if targets == "all":
+                if not game.get("all_achievements"):
+                    raise CommandError(f"`{app_id}` has no mark for all achievements.")
+                del game["all_achievements"]
+            else:
+                achievements = game.get("achievements", {})
+                missing = [a for a in targets if a not in achievements]
+                if len(missing) == len(targets):
+                    raise CommandError(f"{', '.join(f'`{a}`' for a in missing)} has no warning in `{app_id}`.")
+                for api in targets:
+                    achievements.pop(api, None)
+            _write_legacy(game)
+            _touch(game)
 
     elif cmd.name == "tags":
         tags = feed.get("tags", {})

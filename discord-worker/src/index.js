@@ -14,7 +14,8 @@
 // shutdown do jogo com data (notifica quem não tem 100%) e tags de conquista (nunca notificam).
 const OBTAINABILITY = ["unobtainable", "possibly_obtainable", "broken_but_obtainable"];
 const BUILTIN_TAGS = ["mp_required", "dlc_required", "unavailable", "developer_required", "date_sensitive"];
-const NOT_TAGS = [...OBTAINABILITY, "unobtainable_100", "partial_broken", "servers_shutdown", "shutdown"];
+// `shutdown` não é tag de classificação: tem bloco próprio (/shutdown).
+const NOT_TAGS = [...OBTAINABILITY, "unobtainable_100", "partial_broken", "servers_shutdown", "shutdown", "shut_down"];
 const TAG_KEY = /^[a-z][a-z0-9_]{1,31}$/;
 const EPHEMERAL = 64;
 
@@ -125,42 +126,61 @@ function textLines(values) {
   return lines;
 }
 
+/** " ACH_1 ; ACH_2 ; ACH_1 " → ["ACH_1", "ACH_2"] (também aceita vírgula). */
+export function splitTargets(v) {
+  const out = [];
+  for (const part of String(v ?? "").split(/[;,]/)) {
+    const t = part.trim();
+    if (t && !out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+/** Alvo de conquistas → texto do comando: "all", "none" (se permitido) ou "ACH_1;ACH_2". */
+function targetsOf(v, field, { allowNone = false } = {}) {
+  const raw = clean(v);
+  const low = raw.toLowerCase();
+  if (low === "all") return "all";
+  if (allowNone && (low === "none" || low === "")) return "none";
+  const names = splitTargets(raw);
+  if (!names.length) throw new UserError(`\`${field}\`: give at least one API name (several with \`;\`, e.g. \`ACH_1;ACH_2\`) or \`all\`.`);
+  const bad = names.find((n) => /\s/.test(n));
+  if (bad) throw new UserError(`\`${field}\`: \`${bad}\` has a space. Separate API names with \`;\`.`);
+  return names.join(";");
+}
+
 /** Comando de barra → comando de texto equivalente (o que o sync aplica). */
 export function toTextCommand(name, sub, values, feed) {
   switch (name) {
     case "ach": {
-      const api = clean(values.api_name);
-      if (!/^\S+$/.test(api)) throw new UserError("`api_name` can't have spaces.");
-      const head = [`!ach ${appIdOf(values.appid)} ${api}`];
+      const head = [`!ach ${appIdOf(values.appid)} ${targetsOf(values.api_name, "api_name")}`];
       if (values.obtainability !== undefined) head.push(obtainabilityOf(values.obtainability));
-      for (const [opt, field] of [["tags", "tags"], ["add", "add_tags"], ["del", "remove_tags"]]) {
+      for (const [opt, field] of [["add", "add_tags"], ["del", "remove_tags"]]) {
         if (clean(values[field])) head.push(`${opt}=${tagListOf(values[field], field)}`);
       }
-      if (values.shutdown !== undefined) head.push(`shutdown=${values.shutdown ? "yes" : "no"}`);
       if (head.length === 1 && !textLines(values).length) {
-        throw new UserError("Nothing to change: set `obtainability`, tags, `shutdown` or a note.");
+        throw new UserError("Nothing to change: set `obtainability`, tags or a note. (Shutdowns use /shutdown.)");
       }
       return [head.join(" "), ...textLines(values)].join("\n");
     }
     case "shutdown": {
       const when = clean(values.date).toLowerCase() || "now";
-      if (!["now", "remove"].includes(when) && !/^\d{4}-\d{2}-\d{2}$/.test(when)) {
-        throw new UserError("`date` must be YYYY-MM-DD, `now` (already shut down) or `remove`.");
+      if (when === "remove") throw new UserError("To remove a shutdown use /removeshutdown.");
+      if (when !== "now" && !/^\d{4}-\d{2}-\d{2}$/.test(when)) {
+        throw new UserError("`date` must be YYYY-MM-DD or `now` (already shut down).");
       }
       const head = [`!shutdown ${appIdOf(values.appid)} ${when}`];
       if (clean(values.scope)) head.push(quoteOpt("scope", clean(values.scope)));
-      if (clean(values.achievements)) head.push(`achievements=${clean(values.achievements).replace(/\s*,\s*/g, ",").replace(/\s/g, "")}`);
+      if (values.achievements !== undefined) {
+        head.push(`achievements=${targetsOf(values.achievements, "achievements", { allowNone: true })}`);
+      }
       return [head.join(" "), ...textLines(values)].join("\n");
     }
-    case "game": {
-      const head = [`!game ${appIdOf(values.appid)}`];
-      if (values.obtainability !== undefined) head.push(`obtainability=${obtainabilityOf(values.obtainability)}`);
-      if (head.length === 1 && !textLines(values).length) throw new UserError("Nothing to change: set `obtainability` or a summary (`en` / `pt`).");
-      return [head.join(" "), ...textLines(values)].join("\n");
-    }
+    case "removeshutdown":
+      return `!removeshutdown ${appIdOf(values.appid)}`;
     case "remove": {
-      const api = clean(values.api_name);
-      return `!remove ${appIdOf(values.appid)}${api ? ` ${api}` : ""}`;
+      const app = appIdOf(values.appid);
+      return clean(values.api_name) ? `!remove ${app} ${targetsOf(values.api_name, "api_name")}` : `!remove ${app}`;
     }
     case "tag": {
       const key = clean(values.key).toLowerCase();
@@ -177,12 +197,12 @@ export function toTextCommand(name, sub, values, feed) {
 
 const HELP = [
   "**Achievement Tracker — warnings**",
-  "`/ach` mark one achievement: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), tags, `shutdown` link, note",
-  "`/shutdown` servers shutting down on a date (`date: YYYY-MM-DD`), already off (`now`) or `remove`",
-  "`/game` game summary, or obtainability for the whole game · `/remove` a game or achievement · `/show` what's published",
-  "`/tag add|remove|list` names for your own tags",
-  `Built-in tags: ${BUILTIN_TAGS.join(", ")} (any new key works too)`,
-  "Who gets notified: obtainability → players who don't have that achievement · shutdown → players below 100% · tags → nobody.",
+  "Achievement targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all` (every achievement of the game).",
+  "`/ach` mark achievements: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), `add_tags` / `remove_tags`, note",
+  "`/shutdown` servers shutting down on a date (`date: YYYY-MM-DD`) or already off (`now`); `achievements`: none · all · `ACH_1;ACH_2` (they break on the date) · `/removeshutdown` takes it off",
+  "`/remove` a game or some achievements · `/show` what's published · `/tag add|remove|list` names for your own tags",
+  `Built-in tags: ${BUILTIN_TAGS.join(", ")} (any new key works too; \`shutdown\` is not a tag)`,
+  "Who gets notified: obtainability → players who don't have that achievement · shutdown → players below 100% · tags → nobody. The app writes the game summary from what's marked.",
   "Changes are published in about 1 minute (✅ on the message, or ❌ with the reason). In the app: Settings → Sync now, or it updates on its own within the hour.",
 ].join("\n");
 

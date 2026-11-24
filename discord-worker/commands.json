@@ -1,7 +1,7 @@
 [
   {
     "name": "ach",
-    "description": "Mark one achievement: obtainability, tags, shutdown link and note",
+    "description": "Mark achievements (one, several with ; or all): obtainability, tags and note",
     "options": [
       {
         "type": 4,
@@ -13,9 +13,9 @@
       {
         "type": 3,
         "name": "api_name",
-        "description": "Achievement API name",
+        "description": "API name, several with ; (ACH_1;ACH_2), or all",
         "required": true,
-        "max_length": 100
+        "max_length": 1000
       },
       {
         "type": 3,
@@ -59,20 +59,6 @@
       },
       {
         "type": 3,
-        "name": "tags",
-        "description": "Replace all tags (comma-separated)",
-        "required": false,
-        "max_length": 120,
-        "autocomplete": true
-      },
-      {
-        "type": 5,
-        "name": "shutdown",
-        "description": "Breaks when the game's servers shut down (/shutdown)",
-        "required": false
-      },
-      {
-        "type": 3,
         "name": "en",
         "description": "Note in English (optional)",
         "required": false,
@@ -101,7 +87,7 @@
       {
         "type": 3,
         "name": "date",
-        "description": "YYYY-MM-DD, or now (already shut down), or remove",
+        "description": "YYYY-MM-DD, or now (already shut down)",
         "required": true,
         "max_length": 10
       },
@@ -115,29 +101,29 @@
       {
         "type": 3,
         "name": "achievements",
-        "description": "API names that break, comma-separated (default: mp_required ones)",
+        "description": "Achievements that break: none (default), all, or ACH_1;ACH_2",
         "required": false,
-        "max_length": 300
+        "max_length": 1000
       },
       {
         "type": 3,
         "name": "en",
-        "description": "Game summary in English (optional)",
+        "description": "Shutdown summary in English (optional: the app writes one)",
         "required": false,
         "max_length": 300
       },
       {
         "type": 3,
         "name": "pt",
-        "description": "Resumo do jogo em português (opcional)",
+        "description": "Resumo do desligamento em português (opcional)",
         "required": false,
         "max_length": 300
       }
     ]
   },
   {
-    "name": "game",
-    "description": "Game summary, or obtainability for the whole game (when the achievement isn't known)",
+    "name": "removeshutdown",
+    "description": "Remove a game's shutdown (achievements broken only by it go back to normal)",
     "options": [
       {
         "type": 4,
@@ -145,44 +131,6 @@
         "description": "Steam AppID",
         "required": true,
         "min_value": 1
-      },
-      {
-        "type": 3,
-        "name": "obtainability",
-        "description": "Whole-game obtainability (optional)",
-        "required": false,
-        "choices": [
-          {
-            "name": "Unobtainable",
-            "value": "unobtainable"
-          },
-          {
-            "name": "Possibly obtainable",
-            "value": "possibly_obtainable"
-          },
-          {
-            "name": "Broken but obtainable",
-            "value": "broken_but_obtainable"
-          },
-          {
-            "name": "None (clear)",
-            "value": "none"
-          }
-        ]
-      },
-      {
-        "type": 3,
-        "name": "en",
-        "description": "Summary in English (optional: the app writes one)",
-        "required": false,
-        "max_length": 300
-      },
-      {
-        "type": 3,
-        "name": "pt",
-        "description": "Resumo em português (opcional)",
-        "required": false,
-        "max_length": 300
       }
     ]
   },
@@ -200,9 +148,9 @@
       {
         "type": 3,
         "name": "api_name",
-        "description": "Only this achievement (optional)",
+        "description": "Only these achievements: ACH_1;ACH_2 or all (optional)",
         "required": false,
-        "max_length": 100
+        "max_length": 1000
       }
     ]
   },

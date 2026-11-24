@@ -8,16 +8,24 @@ channel on Discord (or by hand on GitHub).
 
 | What | Where | Who gets notified |
 |---|---|---|
-| **Obtainability**: `unobtainable`, `possibly_obtainable`, `broken_but_obtainable` | one achievement | players who started the game and **don't have that achievement** |
-| **Shutdown** with a date | the game | players who started the game and **aren't at 100%** |
-| **Tags**: `mp_required`, `dlc_required`, `unavailable` (yet to be released), `developer_required`, `date_sensitive`, or any new key | one achievement | **nobody** (they're just labels and a filter) |
+| **Obtainability**: `unobtainable`, `possibly_obtainable`, `broken_but_obtainable` | achievements | players who started the game and **don't have that achievement** |
+| **Shutdown** with a date | the game (its own block) | players who started the game and **aren't at 100%** |
+| **Tags**: `mp_required`, `dlc_required`, `unavailable` (yet to be released), `developer_required`, `date_sensitive`, or any new key | achievements | **nobody** (they're just labels and a filter) |
+
+**Achievement targets.** Wherever you name achievements, you can give one API name, several
+separated by `;` (`ACH_ONLINE_WIN;ACH_ONLINE_RANKED`), or `all` for every achievement of the
+game. Spaces around `;` and repeated names are ignored.
 
 - Any achievement with an obtainability automatically flags the game as having broken
   achievements. You don't set a game status for it.
 - **Shutdown** before the date shows as a *Shutdown warning*. On or after the date, it shows as
-  *Shut down*, and the achievements linked to it become broken. Linked means marked with
-  `shutdown: yes` in `/ach` or listed in `/shutdown achievements:`. If none are linked, the
-  `mp_required` ones count. With no date (`now`), the game is already shut down.
+  *Shut down*. With no date (`now`), the game is already shut down. Which achievements break on
+  that date depends on `achievements`:
+  - `none` (default): only the game is flagged, no achievement breaks;
+  - `ACH_1;ACH_2`: only those achievements break;
+  - `all`: every achievement of the game breaks.
+- `shutdown` is **not a tag**. It only exists as the game's shutdown block.
+- Removing a shutdown (`/removeshutdown`) puts back the achievements that were broken only by it.
 - Players with 0 achievements get the heads-up when they open the game (before their first
   achievement counts toward their Steam average). Tags never trigger it.
 - Each item notifies once per player.
@@ -33,17 +41,18 @@ channel on Discord (or by hand on GitHub).
 3. The app picks up the new feed within the hour (or right away with Sync now).
 
 The app also has an **admin builder** (Settings → Warnings → "Show admin builder"). Open a
-game, pick the obtainability, tags and shutdown for each achievement, and it previews the
-result and writes the commands to paste in `#admins-flag`.
+game, set the shutdown (date, achievements that break, summary), the mark for all achievements,
+and the obtainability, tags and note of each achievement. It previews the result and writes the
+commands to paste in `#admins-flag`.
 
 ## Slash commands
 
 | Command | What it does |
 |---|---|
-| `/ach appid api_name [obtainability] [add_tags] [remove_tags] [tags] [shutdown] [en] [pt]` | Mark one achievement. `obtainability: None` clears it. An achievement left with nothing is removed |
-| `/shutdown appid date [scope] [achievements] [en] [pt]` | `date` = `YYYY-MM-DD`, `now` (already off) or `remove` |
-| `/game appid [obtainability] [en] [pt]` | Game summary, or obtainability for the whole game when the exact achievement isn't known |
-| `/remove appid [api_name]` | Remove a game's warning, or one achievement |
+| `/ach appid api_name [obtainability] [add_tags] [remove_tags] [en] [pt]` | Mark achievements (`api_name`: one, `ACH_1;ACH_2` or `all`). `obtainability: None` clears it. An achievement left with nothing is removed |
+| `/shutdown appid date [scope] [achievements] [en] [pt]` | Add or change the shutdown. `date` = `YYYY-MM-DD` or `now` (already off). `achievements` = `none`, `all` or `ACH_1;ACH_2`. `en`/`pt` = shutdown summary |
+| `/removeshutdown appid` | Remove the game's shutdown |
+| `/remove appid [api_name]` | Remove a game's warning, or some achievements (`ACH_1;ACH_2`, or `all` for the all-achievements mark) |
 | `/show appid` | Show what is published (only you see it) |
 | `/tag add key [en] [pt]` · `/tag remove key` · `/tag list` | Names for your own tags |
 | `/help` | How it works |
@@ -52,38 +61,51 @@ Tag options suggest the built-in tags and the ones already used as you type. A n
 example `needs_coop`) is created on its first use, with a name made from the key. Rename it with
 `/tag add`.
 
-Without `en`, the app writes a summary from what's marked (in English or Portuguese).
+The app writes the game's summary from what's marked (in English or Portuguese), so there is no
+command for it. To flag every achievement of a game, use `/ach api_name:all` (`/game` was removed).
 
 ### Examples
 
 ```
 /ach appid:366260 api_name:MS2_015 obtainability:Unobtainable en:Doesn't unlock since patch 1.2
 /ach appid:620 api_name:COOP_WIN add_tags:mp_required,date_sensitive
-/shutdown appid:1063730 date:2027-01-31 scope:Entire game
-/shutdown appid:219150 date:now achievements:RANKED_1,RANKED_2
+/ach appid:219150 api_name:ACH_ONLINE_WIN;ACH_ONLINE_RANKED obtainability:Unobtainable
+/ach appid:219150 api_name:all add_tags:mp_required en:All achievements require online connection.
+/shutdown appid:1063730 date:2027-01-31 scope:Entire game achievements:all
+/shutdown appid:219150 date:now achievements:ACH_ONLINE_WIN;ACH_ONLINE_RANKED
+/removeshutdown appid:219150
 ```
 
 ## Text commands (still work)
 
-`!ach`, `!shutdown`, `!game`, `!remove`, `!show`, `!tag add|remove`, `!tags`, `!help`. They're
+`!ach`, `!shutdown`, `!removeshutdown`, `!remove`, `!show`, `!tag add|remove`, `!tags`, `!help`. They're
 the same as the slash commands, with `en:` / `pt:` on their own lines (`!help` shows the
 syntax). They're applied on the next sync, with no instant reply. Old forms still work, such as
-`!ach <appid> <API> unobtainable_100|partial_broken|servers_shutdown|<tag>` and
-`!game <appid> servers_shutdown shutdown=YYYY-MM-DD`.
+`!ach <appid> <API> unobtainable_100|partial_broken|servers_shutdown|<tag>`, `!ach … shutdown=yes`
+(adds the achievements to the shutdown list), `!ach … tags=a,b` (replaces all tags), `!shutdown <appid> remove`
+and `!game <appid> obtainability=…` / `!game <appid> servers_shutdown shutdown=YYYY-MM-DD`.
 
-## Feed format (version 2)
+## Feed format (version 3)
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "games": {
-    "1063730": {
+    "219150": {
       "revision": 3,
       "summary_en": "", "summary_pt": "",
-      "shutdown": { "date": "2027-01-31", "scope": "Entire game" },
-      "obtainability": null,
+      "shutdown_info": {
+        "is_shutdown": true,
+        "shutdown_date": "2024-06-30",
+        "scope": "Online mode",
+        "achievement_scope": "specific",
+        "target_achievements": ["ACH_ONLINE_WIN", "ACH_ONLINE_RANKED"],
+        "summary_en": "Official multiplayer servers shut down.",
+        "summary_pt": "Servidores multiplayer oficiais encerrados."
+      },
+      "all_achievements": { "obtainability": null, "tags": ["mp_required"], "note_en": "All achievements require online connection.", "note_pt": "" },
       "achievements": {
-        "MS2_015": { "obtainability": "unobtainable", "shutdown": false, "tags": ["mp_required"], "note_en": "", "note_pt": "" }
+        "ACH_ONLINE_WIN": { "obtainability": "unobtainable", "tags": ["mp_required", "date_sensitive"], "note_en": "", "note_pt": "" }
       }
     }
   },
@@ -91,9 +113,10 @@ syntax). They're applied on the next sync, with no instant reply. Old forms stil
 }
 ```
 
-The sync also writes the old fields (`status`, `shutdown_info`, each achievement's `type`), so
-older versions of the app keep working. Feeds still on version 1 are migrated automatically on
-the next sync.
+`achievement_scope` is `none`, `specific` (uses `target_achievements`) or `all`. The sync also
+writes the fields of the older formats (v2: `shutdown`, the game's `obtainability`, achievement
+`shutdown`; v1: `status`, each achievement's `type`), so older versions of the app keep working.
+Feeds on version 1 or 2 are migrated automatically on the next sync.
 
 ## Setup reference
 
