@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795561826,
+  "updated_at": 1795561940,
   "games": {
     "366260": {
       "revision": 2,
@@ -217,14 +217,13 @@
       "status": "partial_broken"
     },
     "1522820": {
-      "revision": 3,
+      "revision": 4,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
         "ComboRiftLord": {
           "tags": [
-            "dlc_required",
-            "mp_required"
+            "dlc_required"
           ],
           "note_en": "",
           "note_pt": "",
