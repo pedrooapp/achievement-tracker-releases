@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795561798,
+  "updated_at": 1795561826,
   "games": {
     "366260": {
       "revision": 2,
@@ -217,10 +217,20 @@
       "status": "partial_broken"
     },
     "1522820": {
-      "revision": 1,
+      "revision": 3,
       "summary_en": "",
       "summary_pt": "",
-      "achievements": {},
+      "achievements": {
+        "ComboRiftLord": {
+          "tags": [
+            "dlc_required",
+            "mp_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
       "shutdown": {
         "date": "2026-11-25",
         "scope": null
