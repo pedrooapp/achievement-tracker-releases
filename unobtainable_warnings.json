@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795562557,
+  "updated_at": 1795563007,
   "games": {
     "366260": {
       "revision": 2,
@@ -250,11 +250,5 @@
       "obtainability": "unobtainable"
     }
   },
-  "tags": {
-    "teste": {
-      "label_en": "Teste",
-      "label_pt": "",
-      "breaks_100": false
-    }
-  }
+  "tags": {}
 }
