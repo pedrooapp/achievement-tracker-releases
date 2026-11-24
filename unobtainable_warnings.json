@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795478311,
+  "updated_at": 1795521800,
   "games": {
     "366260": {
       "revision": 2,
@@ -175,6 +175,22 @@
       "summary_pt": "",
       "achievements": {
         "GMA_PLAYWITH_GARRY": {
+          "tags": [
+            "developer_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "developer_required"
+        }
+      },
+      "status": "developer_required"
+    },
+    "3454830": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "ACH_MEET_DEV": {
           "tags": [
             "developer_required"
           ],
