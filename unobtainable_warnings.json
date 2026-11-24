@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": 1795521800,
+  "updated_at": 1795560948,
   "games": {
     "366260": {
       "revision": 2,
@@ -200,6 +200,21 @@
         }
       },
       "status": "developer_required"
+    },
+    "440": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "TF_REPLAY_YOUTUBE_VIEWS_TIER1": {
+          "obtainability": "unobtainable",
+          "tags": [],
+          "note_en": "",
+          "note_pt": "",
+          "type": "unobtainable_100"
+        }
+      },
+      "status": "unobtainable_100"
     }
   },
   "tags": {
