@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795574019,
+  "updated_at": 1795622055,
   "games": {
     "366260": {
       "revision": 2,
@@ -441,6 +441,26 @@
         "note_en": "",
         "note_pt": ""
       }
+    },
+    "858080": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {},
+      "shutdown_info": {
+        "achievement_scope": "none",
+        "target_achievements": [],
+        "summary_en": "",
+        "summary_pt": "",
+        "scope": null,
+        "is_shutdown": true,
+        "shutdown_date": "2026-12-31"
+      },
+      "shutdown": {
+        "date": "2026-12-31",
+        "scope": null
+      },
+      "status": "servers_shutdown"
     }
   },
   "tags": {}
