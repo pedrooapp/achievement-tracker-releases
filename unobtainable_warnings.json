@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795564850,
+  "updated_at": 1795564968,
   "games": {
     "366260": {
       "revision": 2,
@@ -18,8 +18,16 @@
       }
     },
     "1063730": {
-      "revision": 3,
-      "achievements": {},
+      "revision": 4,
+      "achievements": {
+        "META_REPAIRS_COUNT1": {
+          "obtainability": "unobtainable",
+          "tags": [],
+          "note_en": "",
+          "note_pt": "",
+          "type": "unobtainable_100"
+        }
+      },
       "status": "servers_shutdown",
       "shutdown_info": {
         "is_shutdown": true,
