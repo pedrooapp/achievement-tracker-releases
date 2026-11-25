@@ -203,7 +203,7 @@ const HELP = [
   "`/remove` a game or some achievements · `/show` what's published · `/tag add|remove|list` names for your own tags",
   `Built-in tags: ${BUILTIN_TAGS.join(", ")} (any new key works too; \`shutdown\` is not a tag)`,
   "Who gets notified: obtainability → players who don't have that achievement · shutdown → players below 100% · tags → nobody. The app writes the game summary from what's marked.",
-  "Changes are published in about 1 minute (✅ on the message, or ❌ with the reason). In the app: Settings → Sync now, or it updates on its own within the hour.",
+  "Changes are published in about 1 minute (✅ on the message, or ❌ with the reason). The app picks it up on its own within about 15 seconds after that.",
 ].join("\n");
 
 /** "id1, id2\r\n" → ["id1", "id2"]: o secret pode vir com espaço/quebra de linha do terminal. */

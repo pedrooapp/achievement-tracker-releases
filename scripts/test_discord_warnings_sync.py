@@ -72,8 +72,7 @@ class Obtainability(unittest.TestCase):
         run(feed, "!game 10 obtainability=unobtainable")
         self.assertEqual(feed["games"]["10"]["all_achievements"]["obtainability"], "unobtainable", "!game obtainability = alvo all")
         run(feed, "!remove 10 all")
-        self.assertNotIn("all_achievements", feed["games"]["10"])
-        self.assertNotIn("obtainability", feed["games"]["10"])
+        self.assertNotIn("10", feed["games"], "sem mais nada marcado, o jogo sai do feed")
 
     def test_new_tags_are_created_on_the_fly(self):
         feed = {"games": {}}
@@ -86,7 +85,7 @@ class Obtainability(unittest.TestCase):
         feed = {"games": {}}
         run(feed, "!ach 10 X tags=dlc_required")
         run(feed, "!ach 10 X del=dlc_required")
-        self.assertEqual(feed["games"]["10"]["achievements"], {})
+        self.assertNotIn("10", feed["games"])
 
     def test_legacy_type_words_still_work(self):
         feed = {"games": {}}
@@ -127,6 +126,8 @@ class Shutdown(unittest.TestCase):
         run(feed, "!shutdown 30 now achievements=all")
         info = feed["games"]["30"]["shutdown_info"]
         self.assertEqual((info["shutdown_date"], info["achievement_scope"], info["target_achievements"]), (None, "all", []))
+        self.assertEqual(feed["games"]["30"]["obtainability"], "unobtainable", "app 0.2.14/15: tudo inatingível")
+        self.assertNotIn("all_achievements", feed["games"]["30"], "o v3 não ganha marcação extra")
 
         run(feed, "!shutdown 30 now achievements=none")
         self.assertEqual(feed["games"]["30"]["shutdown_info"]["achievement_scope"], "none")
@@ -137,13 +138,27 @@ class Shutdown(unittest.TestCase):
         run(feed, '!shutdown 30 now achievements="A ; B"')
         self.assertEqual(feed["games"]["30"]["shutdown_info"]["target_achievements"], ["A", "B"])
 
+    def test_game_left_empty_is_removed(self):
+        feed = {"games": {"9": {"revision": 4, "summary_en": "", "summary_pt": "", "achievements": {}}}}
+        run(feed, "!shutdown 30 now achievements=all")
+        self.assertNotIn("9", feed["games"], "jogo vazio antigo sai no próximo comando")
+        run(feed, "!removeshutdown 30")
+        self.assertNotIn("30", feed["games"], "só tinha o shutdown: o jogo sai do feed")
+        run(feed, "!ach 31 X unobtainable")
+        run(feed, "!ach 31 X none")
+        self.assertNotIn("31", feed["games"], "última conquista desmarcada: o jogo sai")
+        run(feed, "!ach 32 X unobtainable")
+        run(feed, "!ach 32 Y add=mp_required")
+        run(feed, "!remove 32 X")
+        self.assertEqual(list(feed["games"]["32"]["achievements"]), ["Y"], "outras marcações ficam")
+
     def test_remove_shutdown(self):
         feed = {"games": {}}
         run(feed, "!shutdown 30 now achievements=A")
         run(feed, "!ach 30 A unobtainable")
         self.assertTrue(feed["games"]["30"]["achievements"]["A"]["shutdown"])
         run(feed, "!removeshutdown 30")
-        game = feed["games"]["30"]
+        game = feed["games"]["30"]  # sobra a conquista A marcada
         for k in ("shutdown_info", "shutdown"):
             self.assertNotIn(k, game)
         self.assertNotIn("shutdown", game["achievements"]["A"])

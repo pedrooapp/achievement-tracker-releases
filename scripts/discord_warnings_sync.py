@@ -313,8 +313,11 @@ def _write_legacy(game: dict) -> None:
         game["shutdown"] = {"date": info.get("shutdown_date"), "scope": info.get("scope")}
     else:
         game.pop("shutdown", None)
-    if whole:
-        game["obtainability"] = whole
+    # App v0.2.14/15 não conhece o escopo `all`: shutdown já ocorrido (sem data) em todas as
+    # conquistas aparece lá como o jogo inteiro inatingível.
+    v2_whole = whole or ("unobtainable" if info and info.get("achievement_scope") == "all" and not info.get("shutdown_date") else None)
+    if v2_whole:
+        game["obtainability"] = v2_whole
     else:
         game.pop("obtainability", None)
     for api, ach in achievements.items():
@@ -403,6 +406,26 @@ def _set_shutdown_targets(game: dict, scope: str | list[str]) -> None:
         info["achievement_scope"], info["target_achievements"] = "none", []
     else:
         info["achievement_scope"], info["target_achievements"] = "specific", list(scope)
+
+
+def is_empty_game(game: dict) -> bool:
+    """Jogo sem shutdown, sem marcação de todas as conquistas, sem conquistas e sem resumo."""
+    return not (
+        game.get("shutdown_info")
+        or game.get("all_achievements")
+        or game.get("achievements")
+        or game.get("summary_en")
+        or game.get("summary_pt")
+    )
+
+
+def prune_empty_games(feed: dict) -> list[str]:
+    """Tira do feed os jogos que ficaram sem nada (ex.: depois de !removeshutdown)."""
+    games = feed.get("games", {})
+    empty = [app_id for app_id, game in games.items() if is_empty_game(game)]
+    for app_id in empty:
+        del games[app_id]
+    return empty
 
 
 def apply_command(feed: dict, cmd: Command, now: int) -> str | None:
@@ -624,6 +647,7 @@ def _apply(feed: dict, cmd: Command, now: int) -> str | None:
     else:
         raise CommandError(f"Unknown command `!{cmd.name}`. Type `!help`.")
 
+    prune_empty_games(feed)
     feed["updated_at"] = now
     feed["version"] = FEED_VERSION
     return None

@@ -234,12 +234,6 @@
       },
       "status": "partial_broken"
     },
-    "1522820": {
-      "revision": 6,
-      "summary_en": "",
-      "summary_pt": "",
-      "achievements": {}
-    },
     "2918300": {
       "revision": 3,
       "summary_en": "",
@@ -285,7 +279,8 @@
         "date": null,
         "scope": null
       },
-      "status": "servers_shutdown"
+      "status": "servers_shutdown",
+      "obtainability": "unobtainable"
     },
     "1466930": {
       "revision": 1,
@@ -305,7 +300,8 @@
         "date": null,
         "scope": null
       },
-      "status": "servers_shutdown"
+      "status": "servers_shutdown",
+      "obtainability": "unobtainable"
     }
   },
   "tags": {}

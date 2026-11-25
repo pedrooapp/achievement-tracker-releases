@@ -1,7 +1,7 @@
 # Warnings feed (broken / unobtainable achievements)
 
-`unobtainable_warnings.json` is read by the Achievement Tracker app when it opens, about once an
-hour, and on Settings → Sync now. It is edited **only by admins**, from the `#admins-flag`
+`unobtainable_warnings.json` is read by the Achievement Tracker app on its own: when it opens and
+then every 15 seconds (it only downloads the file when it changed). It is edited **only by admins**, from the `#admins-flag`
 channel on Discord (or by hand on GitHub).
 
 ## What you can mark
@@ -38,12 +38,7 @@ game. Spaces around `;` and repeated names are ignored.
    the change is in the feed in about 1 minute. The message gets ✅, or ❌ with the reason.
    Without the `GITHUB_DISPATCH_TOKEN` secret, it waits for the GitHub schedule (every ~10 min,
    but GitHub may delay or skip scheduled runs for hours).
-3. The app picks up the new feed within the hour (or right away with Sync now).
-
-The app also has an **admin builder** (Settings → Warnings → "Show admin builder"). Open a
-game, set the shutdown (date, achievements that break, summary), the mark for all achievements,
-and the obtainability, tags and note of each achievement. It previews the result and writes the
-commands to paste in `#admins-flag`.
+3. The app picks up the new feed within about 15 seconds. There is no manual sync button.
 
 ## Slash commands
 
