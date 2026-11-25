@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795649371,
+  "updated_at": 1795649619,
   "games": {
     "366260": {
       "revision": 2,
@@ -495,6 +495,28 @@
       },
       "obtainability": "unobtainable",
       "status": "servers_shutdown"
+    },
+    "1401590": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "STEAM_ACH_FISHING": {
+          "obtainability": "unobtainable",
+          "tags": [],
+          "note_en": "",
+          "note_pt": "",
+          "type": "unobtainable_100"
+        },
+        "STEAM_ACH_MINING": {
+          "obtainability": "unobtainable",
+          "tags": [],
+          "note_en": "",
+          "note_pt": "",
+          "type": "unobtainable_100"
+        }
+      },
+      "status": "unobtainable_100"
     }
   },
   "tags": {}
