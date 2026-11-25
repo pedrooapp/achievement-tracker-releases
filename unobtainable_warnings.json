@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795572809,
+  "updated_at": 1795572870,
   "games": {
     "366260": {
       "revision": 2,
@@ -392,6 +392,21 @@
       },
       "obtainability": "unobtainable",
       "status": "servers_shutdown"
+    },
+    "444090": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "GOAL_ID_1227": {
+          "obtainability": "possibly_obtainable",
+          "tags": [],
+          "note_en": "",
+          "note_pt": "",
+          "type": "partial_broken"
+        }
+      },
+      "status": "partial_broken"
     }
   },
   "tags": {}
