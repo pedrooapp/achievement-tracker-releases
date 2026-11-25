@@ -14,7 +14,8 @@ channel on Discord (or by hand on GitHub).
 
 **Achievement targets.** Wherever you name achievements, you can give one API name, several
 separated by `;` (`ACH_ONLINE_WIN;ACH_ONLINE_RANKED`), or `all` for every achievement of the
-game. Spaces around `;` and repeated names are ignored.
+game. Only `;` separates names: a name can have spaces inside it (`Pedro Approbato;Outra Conquista`).
+Spaces around `;` and repeated names are ignored.
 
 - Any achievement with an obtainability automatically flags the game as having broken
   achievements. You don't set a game status for it.
@@ -72,6 +73,17 @@ command for it. To flag every achievement of a game, use `/ach api_name:all` (`/
 ```
 
 ## Text commands (still work)
+
+Named parameters run until the next parameter, a `|` or the end of the line, so API names with
+spaces work there too:
+
+```
+!setwarning 219150 apiname=Pedro Approbato ; Segunda Conquista tags=[mp_required] obtainability=unobtainable
+!setshutdown 219150 date=2026-12-31 shutdown_ach=Pedro Approbato;Outra Conquista | en="Servers close" | pt="Servidores fecham"
+```
+
+`!setwarning` = `!ach`, `!setshutdown` = `!shutdown`, `shutdown_ach=` = `achievements=`.
+
 
 `!ach`, `!shutdown`, `!removeshutdown`, `!remove`, `!show`, `!tag add|remove`, `!tags`, `!help`. They're
 the same as the slash commands, with `en:` / `pt:` on their own lines (`!help` shows the

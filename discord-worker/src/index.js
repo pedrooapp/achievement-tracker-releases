@@ -127,9 +127,10 @@ function textLines(values) {
 }
 
 /** " ACH_1 ; ACH_2 ; ACH_1 " → ["ACH_1", "ACH_2"] (também aceita vírgula). */
+/** " Pedro Approbato ; ACH_2 " → ["Pedro Approbato", "ACH_2"]: separa SÓ por `;` e apara as pontas. */
 export function splitTargets(v) {
   const out = [];
-  for (const part of String(v ?? "").split(/[;,]/)) {
+  for (const part of String(v ?? "").replace(/```/g, "").split(";")) {
     const t = part.trim();
     if (t && !out.includes(t)) out.push(t);
   }
@@ -138,14 +139,16 @@ export function splitTargets(v) {
 
 /** Alvo de conquistas → texto do comando: "all", "none" (se permitido) ou "ACH_1;ACH_2". */
 function targetsOf(v, field, { allowNone = false } = {}) {
-  const raw = clean(v);
+  // Sem `clean()`: os espaços dentro de cada nome precisam chegar iguais ao sync.
+  const raw = String(v ?? "").replace(/[\r\n]+/g, " ").trim();
   const low = raw.toLowerCase();
   if (low === "all") return "all";
   if (allowNone && (low === "none" || low === "")) return "none";
   const names = splitTargets(raw);
   if (!names.length) throw new UserError(`\`${field}\`: give at least one API name (several with \`;\`, e.g. \`ACH_1;ACH_2\`) or \`all\`.`);
-  const bad = names.find((n) => /\s/.test(n));
-  if (bad) throw new UserError(`\`${field}\`: \`${bad}\` has a space. Separate API names with \`;\`.`);
+  // Espaços dentro do nome valem ("Pedro Approbato"); só `;` separa conquistas.
+  const bad = names.find((n) => /[|"=]/.test(n) || n.length > 100);
+  if (bad) throw new UserError(`\`${field}\`: \`${bad}\` can't contain \`|\`, \`"\` or \`=\`. Separate API names with \`;\`.`);
   return names.join(";");
 }
 
@@ -153,12 +156,13 @@ function targetsOf(v, field, { allowNone = false } = {}) {
 export function toTextCommand(name, sub, values, feed) {
   switch (name) {
     case "ach": {
-      const head = [`!ach ${appIdOf(values.appid)} ${targetsOf(values.api_name, "api_name")}`];
-      if (values.obtainability !== undefined) head.push(obtainabilityOf(values.obtainability));
+      // Forma nomeada: o sync lê `apiname=` até o próximo parâmetro (nomes podem ter espaço).
+      const head = [`!ach ${appIdOf(values.appid)}`, `apiname=${targetsOf(values.api_name, "api_name")}`];
+      if (values.obtainability !== undefined) head.push(`obtainability=${obtainabilityOf(values.obtainability)}`);
       for (const [opt, field] of [["add", "add_tags"], ["del", "remove_tags"]]) {
         if (clean(values[field])) head.push(`${opt}=${tagListOf(values[field], field)}`);
       }
-      if (head.length === 1 && !textLines(values).length) {
+      if (head.length === 2 && !textLines(values).length) {
         throw new UserError("Nothing to change: set `obtainability`, tags or a note. (Shutdowns use /shutdown.)");
       }
       return [head.join(" "), ...textLines(values)].join("\n");
@@ -180,7 +184,7 @@ export function toTextCommand(name, sub, values, feed) {
       return `!removeshutdown ${appIdOf(values.appid)}`;
     case "remove": {
       const app = appIdOf(values.appid);
-      return clean(values.api_name) ? `!remove ${app} ${targetsOf(values.api_name, "api_name")}` : `!remove ${app}`;
+      return clean(values.api_name) ? `!remove ${app} apiname=${targetsOf(values.api_name, "api_name")}` : `!remove ${app}`;
     }
     case "tag": {
       const key = clean(values.key).toLowerCase();

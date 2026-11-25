@@ -45,7 +45,7 @@ test("/ach vira o comando de texto, visível no canal", async () => {
   const { data } = await call(cmd("ach", [opt("appid", "219150"), opt("api_name", "BOSS"), opt("obtainability", "unobtainable"), opt("add_tags", "MP_required, needs-coop"), opt("en", "Event over."), opt("pt", "Evento acabou.")]));
   assert.equal(data.type, 4);
   assert.equal(data.data.flags, 0);
-  assert.match(data.data.content, /```text\n!ach 219150 BOSS unobtainable add=mp_required,needs_coop\nen: Event over\.\npt: Evento acabou\.\n```/);
+  assert.match(data.data.content, /```text\n!ach 219150 apiname=BOSS obtainability=unobtainable add=mp_required,needs_coop\nen: Event over\.\npt: Evento acabou\.\n```/);
 });
 
 test("/ach recusa obtenção desconhecida, categoria usada como tag e comando vazio (efêmero)", async () => {
@@ -62,8 +62,8 @@ test("/ach recusa obtenção desconhecida, categoria usada como tag e comando va
 });
 
 test("/shutdown com data, now e remove", async () => {
-  const dated = await call(cmd("shutdown", [opt("appid", "219150"), opt("date", "2027-01-31"), opt("scope", "online mode"), opt("achievements", " RANKED ; COOP;RANKED")]));
-  assert.match(dated.data.data.content, /!shutdown 219150 2027-01-31 scope="online mode" achievements=RANKED;COOP/);
+  const dated = await call(cmd("shutdown", [opt("appid", "219150"), opt("date", "2027-01-31"), opt("scope", "online mode"), opt("achievements", " RANKED ; Co op Win;RANKED")]));
+  assert.match(dated.data.data.content, /!shutdown 219150 2027-01-31 scope="online mode" achievements=RANKED;Co op Win/);
   assert.match((await call(cmd("shutdown", [opt("appid", "5"), opt("date", "now"), opt("achievements", "ALL")]))).data.data.content, /!shutdown 5 now achievements=all/);
   assert.match((await call(cmd("shutdown", [opt("appid", "5"), opt("date", "now"), opt("achievements", "none")]))).data.data.content, /!shutdown 5 now achievements=none/);
   assert.match((await call(cmd("removeshutdown", [opt("appid", "5")]))).data.data.content, /```text\n!removeshutdown 5\n```/);
@@ -102,7 +102,7 @@ test("/show lê o feed; autocomplete completa o último item da lista de tags", 
 
 test("texto com ``` não quebra o bloco", () => {
   const out = toTextCommand("ach", null, { appid: "5", api_name: "X", en: "bad ``` text" }, FEED);
-  assert.equal(out, "!ach 5 X\nen: bad ''' text");
+  assert.equal(out, "!ach 5 apiname=X\nen: bad ''' text");
 });
 
 async function signed(payload) {
@@ -145,14 +145,17 @@ test("sem token, não dispara e avisa ~10 min", async () => {
 
 test("alvos: lista com ; (sem repetir), all, e remove com lista", async () => {
   const many = await call(cmd("ach", [opt("appid", "5"), opt("api_name", " A ; B;A "), opt("obtainability", "possibly_obtainable")]));
-  assert.match(many.data.data.content, /!ach 5 A;B possibly_obtainable\n/);
+  assert.match(many.data.data.content, /!ach 5 apiname=A;B obtainability=possibly_obtainable\n/);
   const all = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "all"), opt("add_tags", "mp_required")]));
-  assert.match(all.data.data.content, /!ach 5 all add=mp_required\n/);
+  assert.match(all.data.data.content, /!ach 5 apiname=all add=mp_required\n/);
   const empty = await call(cmd("ach", [opt("appid", "5"), opt("api_name", " ; "), opt("obtainability", "unobtainable")]));
   assert.match(empty.data.data.content, /at least one API name/);
-  const spaced = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "ACH 1"), opt("obtainability", "unobtainable")]));
-  assert.match(spaced.data.data.content, /has a space/);
-  assert.match((await call(cmd("remove", [opt("appid", "5"), opt("api_name", "X;Y")]))).data.data.content, /!remove 5 X;Y/);
+  // Espaço dentro do nome é aceito; só ; separa.
+  const spaced = await call(cmd("ach", [opt("appid", "5"), opt("api_name", " Pedro Approbato ; Outra Conquista "), opt("obtainability", "unobtainable")]));
+  assert.match(spaced.data.data.content, /!ach 5 apiname=Pedro Approbato;Outra Conquista obtainability=unobtainable/);
+  const badChar = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "A=B"), opt("obtainability", "unobtainable")]));
+  assert.match(badChar.data.data.content, /can't contain/);
+  assert.match((await call(cmd("remove", [opt("appid", "5"), opt("api_name", "X;Y")]))).data.data.content, /!remove 5 apiname=X;Y/);
   assert.match((await call(cmd("ach", [opt("appid", "5"), opt("api_name", "X"), opt("add_tags", "shutdown")]))).data.data.content, /not a tag/);
 });
 

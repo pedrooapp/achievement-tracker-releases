@@ -13,7 +13,7 @@
       {
         "type": 3,
         "name": "api_name",
-        "description": "API name, several with ; (ACH_1;ACH_2), or all",
+        "description": "API name (spaces OK), several separated by ; (Pedro Approbato;ACH_2), or all",
         "required": true,
         "max_length": 1000
       },
@@ -101,7 +101,7 @@
       {
         "type": 3,
         "name": "achievements",
-        "description": "Achievements that break: none (default), all, or ACH_1;ACH_2",
+        "description": "Achievements that break: none (default), all, or names separated by ; (spaces OK)",
         "required": false,
         "max_length": 1000
       },
@@ -148,7 +148,7 @@
       {
         "type": 3,
         "name": "api_name",
-        "description": "Only these achievements: ACH_1;ACH_2 or all (optional)",
+        "description": "Only these achievements: names separated by ; (spaces OK), or all",
         "required": false,
         "max_length": 1000
       }

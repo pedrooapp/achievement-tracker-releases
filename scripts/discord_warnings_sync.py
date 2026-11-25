@@ -74,7 +74,8 @@ BUILTIN_TAGS = ("mp_required", "dlc_required", "unavailable", "developer_require
 # Tipos do formato antigo.
 LEGACY_OBTAINABILITY = {"unobtainable_100": "unobtainable", "partial_broken": "broken_but_obtainable"}
 TAG_KEY = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
-API_NAME = re.compile(r"^[^\s;]{1,100}$")
+# Nome de conquista: pode ter espaços internos; sem `;` (separador), `|`, `"` ou `=`.
+API_NAME = re.compile(r'^[^;|"=]{1,100}$')
 API = "https://discord.com/api/v10"
 USER_AGENT = "DiscordBot (https://github.com/pedrooapp/achievement-tracker-releases, 1.0)"
 MAX_REPLY = 1900
@@ -106,31 +107,94 @@ class Command:
 # ---------------------------------------------------------------- leitura do comando
 
 
+# Parâmetros nomeados que o parser reconhece. O valor vai até o próximo parâmetro conhecido, um
+# "|" ou o fim da linha — então listas de conquistas podem ter espaços DENTRO de cada nome
+# (`apiname=Pedro Approbato;Outra Conquista`).
+LIST_KEYS = ("apiname", "target", "shutdown_ach", "achievements")
+KNOWN_KEYS = LIST_KEYS + ("obtainability", "tags", "add", "del", "remove", "date", "scope", "shutdown", "en", "pt", "breaks100")
+_KEY_RE = re.compile(r"(?:^|(?<=\s))(" + "|".join(KNOWN_KEYS) + r")=", re.I)
+# Nomes alternativos dos comandos.
+ALIASES = {"setwarning": "ach", "setshutdown": "shutdown"}
+
+
+def _split_unquoted(text: str, sep: str) -> list[str]:
+    """Divide por `sep`, ignorando o que estiver entre aspas."""
+    parts, buf, quoted = [], [], False
+    for ch in text:
+        if ch == '"':
+            quoted = not quoted
+        if ch == sep and not quoted:
+            parts.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    parts.append("".join(buf))
+    return parts
+
+
+def _unquote(value: str) -> str:
+    v = value.strip()
+    if len(v) >= 2 and v[0] == v[-1] == '"':
+        v = v[1:-1]
+    if len(v) >= 2 and v[0] == "[" and v[-1] == "]":  # tags=[mp_required, dlc_required]
+        v = v[1:-1]
+    return v.strip()
+
+
+def _named_options(text: str) -> tuple[str, dict[str, str]]:
+    """Texto antes do 1º parâmetro conhecido (posicionais) + {parâmetro: valor}."""
+    matches = list(_KEY_RE.finditer(text))
+    options: dict[str, str] = {}
+    for n, m in enumerate(matches):
+        end = matches[n + 1].start() if n + 1 < len(matches) else len(text)
+        options[m.group(1).lower()] = _unquote(text[m.end():end])
+    return (text[: matches[0].start()] if matches else text), options
+
+
 def parse_command(content: str) -> Command | None:
-    """Mensagem → comando. `None` se não for um comando (conversa normal no canal)."""
+    """Mensagem → comando. `None` se não for um comando (conversa normal no canal).
+
+    Formatos aceitos (podem ser misturados):
+      !ach 219150 ACH_1;ACH_2 unobtainable add=mp_required          (posicional, nomes sem espaço)
+      !ach 219150 apiname=Pedro Approbato ; Outra Conquista obtainability=unobtainable tags=[mp_required]
+      !setshutdown 219150 date=2026-12-31 shutdown_ach=Pedro Approbato;Outra Conquista | en="…" | pt="…"
+    Linhas `en:` / `pt:` logo abaixo também valem.
+    """
     lines = [ln.strip() for ln in content.strip().splitlines()]
     if not lines or not lines[0].startswith("!"):
         return None
-    # "A ; B" e "achievements= A" viram "A;B" e "achievements=A" (listas de conquistas com espaço).
-    first = re.sub(r"\s*;\s*", ";", lines[0][1:])
-    first = re.sub(r"(?<=\w)=\s+(?=\S)", "=", first)
-    head = first.split()
+    segments = _split_unquoted(lines[0][1:], "|")
+    head = segments[0].strip()
     if not head:
         return None
-    name = head[0].lower()
+    name_part = head.split(None, 1)
+    name = ALIASES.get(name_part[0].lower(), name_part[0].lower())
+    rest = name_part[1] if len(name_part) > 1 else ""
+    positional, options = _named_options(rest)
+    for seg in segments[1:]:  # | en="…" | pt="…"
+        options.update(_named_options(" " + seg.strip())[1])
+
+    # Posicionais: "A ; B" vira "A;B"; key=value desconhecido continua valendo como opção.
     args: list[str] = []
-    options: dict[str, str] = {}
-    # Opções key=value (o valor pode ter espaços se vier entre aspas: scope="online mode").
-    for token in re.findall(r'(\w+)="([^"]*)"|(\S+)', " ".join(head[1:])):
-        key, quoted, plain = token
-        if key:
-            options[key.lower()] = quoted
-        elif "=" in plain:
-            k, v = plain.split("=", 1)
-            options[k.lower()] = v
+    for token in re.sub(r"\s*;\s*", ";", positional).split():
+        if "=" in token and not token.startswith("="):
+            k, v = token.split("=", 1)
+            options.setdefault(k.lower(), _unquote(v))
         else:
-            args.append(plain)
+            args.append(token)
+
+    # Nomes alternativos dos parâmetros → forma interna.
+    target = options.pop("apiname", None) or options.pop("target", None)
+    if "shutdown_ach" in options:
+        options["achievements"] = options.pop("shutdown_ach")
+    if name in ("ach", "remove") and target is not None and args:
+        args.insert(1, target)  # !ach <appid> <alvos> [obtenção]
+    if name == "shutdown" and len(args) == 1 and options.get("date"):
+        args.append(options.pop("date"))
+
     cmd = Command(name=name, args=args, options=options)
+    cmd.en = options.pop("en", "")
+    cmd.pt = options.pop("pt", "")
     for ln in lines[1:]:
         low = ln.lower()
         if low.startswith("en:"):
@@ -162,9 +226,11 @@ def _date(text: str) -> str:
 
 
 def split_targets(text: str) -> list[str]:
-    """`" ACH_1 ; ACH_2 ; ACH_1 "` → `["ACH_1", "ACH_2"]` (também aceita vírgula)."""
+    """`" Pedro Approbato ; ACH_2 ; Pedro Approbato "` → `["Pedro Approbato", "ACH_2"]`.
+
+    Separa SÓ por `;` e apara só as pontas de cada nome (espaços internos ficam)."""
     out: list[str] = []
-    for part in re.split(r"[;,]", text or ""):
+    for part in (text or "").split(";"):
         part = part.strip()
         if part and part not in out:
             out.append(part)
@@ -183,7 +249,7 @@ def _targets(text: str, allow_none: bool = False) -> str | list[str]:
         raise CommandError("Give at least one achievement API name (several with `;`, e.g. `ACH_1;ACH_2`) or `all`.")
     for name in names:
         if not API_NAME.match(name):
-            raise CommandError(f"`{name}` is not a valid API name (no spaces).")
+            raise CommandError(f"`{name}` is not a valid API name (it can't contain `;`, `|`, `\"` or `=`).")
     return names
 
 

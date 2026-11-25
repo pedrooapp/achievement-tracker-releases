@@ -31,6 +31,47 @@ class Parse(unittest.TestCase):
         self.assertEqual(sync.split_targets(";;"), [])
 
 
+class SpacesInApiNames(unittest.TestCase):
+    """API names podem ter espaços internos; só `;` separa conquistas."""
+
+    def test_setwarning_single_name_with_spaces(self):
+        feed = {"games": {}}
+        run(feed, "!setwarning 219150 apiname=Pedro Approbato obtainability=unobtainable")
+        a = feed["games"]["219150"]["achievements"]
+        self.assertEqual(list(a), ["Pedro Approbato"])
+        self.assertEqual(a["Pedro Approbato"]["obtainability"], "unobtainable")
+
+    def test_setwarning_many_names_with_spaces_and_tag_brackets(self):
+        feed = {"games": {}}
+        run(feed, "!setwarning 219150 apiname=Pedro Approbato ; Segunda Conquista Com Espaco tags=[mp_required]")
+        a = feed["games"]["219150"]["achievements"]
+        self.assertEqual(sorted(a), ["Pedro Approbato", "Segunda Conquista Com Espaco"])
+        self.assertTrue(all(x["tags"] == ["mp_required"] for x in a.values()))
+
+    def test_setshutdown_with_pipes_and_spaces(self):
+        feed = {"games": {}}
+        run(feed, '!setshutdown 219150 date=2026-12-31 shutdown_ach=Pedro Approbato;Outra Conquista | en="Servers close | soon" | pt="Servidores fecham"')
+        info = feed["games"]["219150"]["shutdown_info"]
+        self.assertEqual((info["shutdown_date"], info["achievement_scope"]), ("2026-12-31", "specific"))
+        self.assertEqual(info["target_achievements"], ["Pedro Approbato", "Outra Conquista"])
+        self.assertEqual((info["summary_en"], info["summary_pt"]), ("Servers close | soon", "Servidores fecham"), "| entre aspas fica no texto")
+
+    def test_worker_format_and_remove(self):
+        feed = {"games": {}}
+        run(feed, "!ach 5 apiname=A B;C obtainability=possibly_obtainable add=mp_required\nen: Note.")
+        a = feed["games"]["5"]["achievements"]
+        self.assertEqual((sorted(a), a["A B"]["note_en"], a["C"]["tags"]), (["A B", "C"], "Note.", ["mp_required"]))
+        run(feed, "!remove 5 apiname=A B")
+        self.assertEqual(list(feed["games"]["5"]["achievements"]), ["C"])
+        run(feed, "!shutdown 5 now achievements=Ranked Win ; C")
+        self.assertEqual(feed["games"]["5"]["shutdown_info"]["target_achievements"], ["Ranked Win", "C"])
+
+    def test_only_semicolon_separates(self):
+        self.assertEqual(sync.split_targets(" Pedro Approbato ; Outra , Com Vírgula ;Pedro Approbato "), ["Pedro Approbato", "Outra , Com Vírgula"])
+        with self.assertRaises(sync.CommandError):
+            run({"games": {}}, "!ach 5 apiname=Bad=Name unobtainable")
+
+
 class Obtainability(unittest.TestCase):
     def test_ach_obtainability_and_tags(self):
         feed = {"games": {}}
