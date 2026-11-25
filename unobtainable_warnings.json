@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795570310,
+  "updated_at": 1795570369,
   "games": {
     "366260": {
       "revision": 2,
@@ -304,12 +304,12 @@
       "obtainability": "unobtainable"
     },
     "4452480": {
-      "revision": 1,
+      "revision": 2,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {},
       "shutdown_info": {
-        "achievement_scope": "none",
+        "achievement_scope": "all",
         "target_achievements": [],
         "summary_en": "",
         "summary_pt": "",
