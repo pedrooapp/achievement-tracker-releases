@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795571911,
+  "updated_at": 1795572216,
   "games": {
     "366260": {
       "revision": 2,
@@ -342,35 +342,6 @@
         "scope": null
       },
       "status": "servers_shutdown"
-    },
-    "44350": {
-      "revision": 1,
-      "summary_en": "",
-      "summary_pt": "",
-      "achievements": {
-        "23": {
-          "obtainability": "unobtainable",
-          "tags": [],
-          "note_en": "",
-          "note_pt": "",
-          "type": "unobtainable_100"
-        },
-        "32": {
-          "obtainability": "unobtainable",
-          "tags": [],
-          "note_en": "",
-          "note_pt": "",
-          "type": "unobtainable_100"
-        },
-        "45": {
-          "obtainability": "unobtainable",
-          "tags": [],
-          "note_en": "",
-          "note_pt": "",
-          "type": "unobtainable_100"
-        }
-      },
-      "status": "unobtainable_100"
     }
   },
   "tags": {}
