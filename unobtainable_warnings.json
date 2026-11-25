@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795622055,
+  "updated_at": 1795624599,
   "games": {
     "366260": {
       "revision": 2,
@@ -461,6 +461,38 @@
         "scope": null
       },
       "status": "servers_shutdown"
+    },
+    "1978210": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "Speedy": {
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ChristmasSpirit": {
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ChristmasFeast": {
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
     }
   },
   "tags": {}
