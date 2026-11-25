@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795573095,
+  "updated_at": 1795574019,
   "games": {
     "366260": {
       "revision": 2,
@@ -428,6 +428,19 @@
       },
       "obtainability": "unobtainable",
       "status": "servers_shutdown"
+    },
+    "559650": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {},
+      "all_achievements": {
+        "tags": [
+          "mp_required"
+        ],
+        "note_en": "",
+        "note_pt": ""
+      }
     }
   },
   "tags": {}
