@@ -167,6 +167,11 @@ export function toTextCommand(name, sub, values, feed) {
         if (when !== "none" && !/^\d{4}-\d{2}-\d{2}$/.test(when)) throw new UserError("`date` must be YYYY-MM-DD (or `none`).");
         head.push(`date=${when}`);
       }
+      if (clean(values.frequency)) {
+        const freq = clean(values.frequency).toLowerCase();
+        if (freq !== "once" && freq !== "yearly") throw new UserError("`frequency` must be once or yearly.");
+        head.push(`frequency=${freq}`);
+      }
       if (head.length === 2 && !textLines(values).length) {
         throw new UserError("Nothing to change: set `obtainability`, tags or a note. (Shutdowns use /shutdown.)");
       }
@@ -207,7 +212,7 @@ export function toTextCommand(name, sub, values, feed) {
 const HELP = [
   "**Achievement Tracker — warnings**",
   "Achievement targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all` (every achievement of the game).",
-  "`/ach` mark achievements: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), `add_tags` / `remove_tags`, `date` (date_sensitive: the day it can be unlocked), note",
+  "`/ach` mark achievements: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), `add_tags` / `remove_tags`, `date` (date_sensitive: the day it can be unlocked) + `frequency` (once · yearly), note",
   "`/shutdown` servers shutting down on a date (`date: YYYY-MM-DD`) or already off (`now`); `achievements`: none · all · `ACH_1;ACH_2` (they break on the date) · `/removeshutdown` takes it off",
   "`/remove` a game or some achievements · `/show` what's published · `/tag add|remove|list` names for your own tags",
   `Built-in tags: ${BUILTIN_TAGS.join(", ")} (any new key works too; \`shutdown\` is not a tag)`,

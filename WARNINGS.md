@@ -87,6 +87,8 @@ spaces work there too:
 Date-sensitive achievement: `!ach 219150 apiname=Xmas Event date=2026-12-25` (or `date` in /ach) stores the day
 it can be unlocked and adds the `date_sensitive` tag. On that day, players who have the game and don't have the
 achievement are notified (once). `date=none` removes the date.
+Add `frequency=yearly` (or `frequency: Yearly` in /ach) for events that come back every year on the same day:
+the app then notifies again each year. `frequency=once` (the default) is a single date.
 
 Achievement obtainable again: `!clearwarning 219150 apiname=Pedro Approbato;ACH_2` (same as `obtainability=none`).
 It clears the obtainability (tags and note stay) and bumps the revision; players who started the game

@@ -84,7 +84,7 @@ HELP = """**Achievement Tracker — warnings commands**
 Targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all`.
 `!ach <appid> <targets> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b]` + lines `en: …` / `pt: …` (note)
 `!clearwarning <appid> <targets>` (or `apiname=…`): clears the obtainability (= `none`; tags and note stay)
-`!ach <appid> <targets> date=YYYY-MM-DD`: date_sensitive — the day it can be unlocked (adds the tag; `date=none` removes the date)
+`!ach <appid> <targets> date=YYYY-MM-DD [frequency=once|yearly]`: date_sensitive — the day it can be unlocked, once or every year (adds the tag; `date=none` removes the date)
 `!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=none|all|ACH_1;ACH_2]` + lines `en:` / `pt:` (shutdown summary)
 `!removeshutdown <appid>`
 `!remove <appid>` · `!remove <appid> <targets>` · `!show <appid>` · `!help`
@@ -113,7 +113,7 @@ class Command:
 # "|" ou o fim da linha — então listas de conquistas podem ter espaços DENTRO de cada nome
 # (`apiname=Pedro Approbato;Outra Conquista`).
 LIST_KEYS = ("apiname", "target", "shutdown_ach", "achievements")
-KNOWN_KEYS = LIST_KEYS + ("obtainability", "tags", "add", "del", "remove", "date", "scope", "shutdown", "en", "pt", "breaks100")
+KNOWN_KEYS = LIST_KEYS + ("obtainability", "tags", "add", "del", "remove", "date", "frequency", "scope", "shutdown", "en", "pt", "breaks100")
 _KEY_RE = re.compile(r"(?:^|(?<=\s))(" + "|".join(KNOWN_KEYS) + r")=", re.I)
 # Nomes alternativos dos comandos.
 ALIASES = {"setwarning": "ach", "setshutdown": "shutdown"}
@@ -469,8 +469,22 @@ def _apply_mark(feed: dict, mark: dict, cmd: Command, kind: str | None) -> None:
             mark["available_date"] = _date(cmd.options["date"].strip())
             if "date_sensitive" not in tags:
                 tags.append("date_sensitive")
+    # Frequência da data: once (padrão, uma vez só) ou yearly (todo ano no mesmo dia).
+    if "frequency" in cmd.options:
+        freq = cmd.options["frequency"].strip().lower()
+        if freq not in ("once", "yearly", "annual", "annually"):
+            raise CommandError(f"Unknown frequency `{freq}`. Use `once` or `yearly`.")
+        if not mark.get("available_date"):
+            raise CommandError("Set the day too: `date=YYYY-MM-DD frequency=yearly`.")
+        if freq == "once":
+            mark.pop("date_frequency", None)
+        else:
+            mark["date_frequency"] = "yearly"
+    if not mark.get("available_date"):
+        mark.pop("date_frequency", None)
     if "date_sensitive" in removing:
         mark.pop("available_date", None)
+        mark.pop("date_frequency", None)
     mark["tags"] = [t for t in tags if t not in removing]
     for t in mark["tags"]:
         _ensure_tag(feed, t)

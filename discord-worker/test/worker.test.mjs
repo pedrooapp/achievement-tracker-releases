@@ -150,6 +150,8 @@ test("alvos: lista com ; (sem repetir), all, e remove com lista", async () => {
   assert.match(fixed.data.data.content, /!ach 5 apiname=Pedro Approbato;B obtainability=none\n/);
   const dated = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "Xmas Event"), opt("date", "2026-12-25")]));
   assert.match(dated.data.data.content, /!ach 5 apiname=Xmas Event date=2026-12-25\n/);
+  const yearly = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "Xmas Event"), opt("date", "2026-12-25"), opt("frequency", "yearly")]));
+  assert.match(yearly.data.data.content, /!ach 5 apiname=Xmas Event date=2026-12-25 frequency=yearly\n/);
   const badDate = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "X"), opt("date", "25/12")]));
   assert.match(badDate.data.data.content, /YYYY-MM-DD/);
   const all = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "all"), opt("add_tags", "mp_required")]));

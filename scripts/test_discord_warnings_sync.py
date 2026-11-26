@@ -356,6 +356,18 @@ class Tags(unittest.TestCase):
         sync.apply_command(feed, sync.parse_command("!ach 10 all date=2027-01-01"), 0)
         self.assertEqual(feed["games"]["10"]["all_achievements"]["available_date"], "2027-01-01")
 
+    def test_date_frequency(self):
+        feed = {"version": 3, "games": {}}
+        sync.apply_command(feed, sync.parse_command("!ach 10 apiname=Xmas Event date=2026-12-25 frequency=yearly"), 0)
+        a = feed["games"]["10"]["achievements"]["Xmas Event"]
+        self.assertEqual((a["available_date"], a["date_frequency"]), ("2026-12-25", "yearly"))
+        sync.apply_command(feed, sync.parse_command("!ach 10 apiname=Xmas Event frequency=once"), 0)
+        self.assertNotIn("date_frequency", feed["games"]["10"]["achievements"]["Xmas Event"])
+        with self.assertRaises(sync.CommandError):
+            sync.apply_command(feed, sync.parse_command("!ach 10 OTHER frequency=yearly"), 0)
+        with self.assertRaises(sync.CommandError):
+            sync.apply_command(feed, sync.parse_command("!ach 10 apiname=Xmas Event frequency=weekly"), 0)
+
     def test_tag_validation(self):
         for text in ["!tag add servers_shutdown", "!tag add shutdown", "!tag add Bad!Key", "!tag add mp_required"]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError):
