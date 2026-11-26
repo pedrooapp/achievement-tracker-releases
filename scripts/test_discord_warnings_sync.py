@@ -326,6 +326,36 @@ class Tags(unittest.TestCase):
         run(feed, "!tag remove grindy", 8)
         self.assertEqual(feed["tags"], {})
 
+    def test_clearwarning_marks_fixed_and_bumps_revision(self):
+        feed = {"version": 3, "games": {}}
+        sync.apply_command(feed, sync.parse_command("!ach 10 apiname=Pedro Approbato;ACH_2 obtainability=unobtainable add=mp_required"), 0)
+        rev = feed["games"]["10"]["revision"]
+        sync.apply_command(feed, sync.parse_command("!clearwarning 10 apiname=Pedro Approbato"), 0)
+        g = feed["games"]["10"]
+        self.assertGreater(g["revision"], rev)
+        # Tag fica; obtenção sai.
+        self.assertNotIn("obtainability", g["achievements"]["Pedro Approbato"])
+        self.assertEqual(g["achievements"]["Pedro Approbato"]["tags"], ["mp_required"])
+        self.assertEqual(g["achievements"]["ACH_2"]["obtainability"], "unobtainable")
+        # obtainability=fixed (e o posicional `fixed`) também limpam.
+        sync.apply_command(feed, sync.parse_command("!ach 10 ACH_2 obtainability=fixed"), 0)
+        self.assertNotIn("obtainability", feed["games"]["10"]["achievements"]["ACH_2"])
+        sync.apply_command(feed, sync.parse_command("!ach 10 all unobtainable"), 0)
+        sync.apply_command(feed, sync.parse_command("!fix 10 all"), 0)
+        self.assertNotIn("all_achievements", feed["games"]["10"])
+
+    def test_date_sensitive_date(self):
+        feed = {"version": 3, "games": {}}
+        sync.apply_command(feed, sync.parse_command("!ach 10 apiname=Xmas Event;ACH_2 date=2026-12-25"), 0)
+        a = feed["games"]["10"]["achievements"]["Xmas Event"]
+        self.assertEqual((a["available_date"], a["tags"]), ("2026-12-25", ["date_sensitive"]))
+        with self.assertRaises(sync.CommandError):
+            sync.apply_command(feed, sync.parse_command("!ach 10 ACH_2 date=25/12"), 0)
+        sync.apply_command(feed, sync.parse_command("!ach 10 ACH_2 date=none"), 0)
+        self.assertNotIn("available_date", feed["games"]["10"]["achievements"]["ACH_2"])
+        sync.apply_command(feed, sync.parse_command("!ach 10 all date=2027-01-01"), 0)
+        self.assertEqual(feed["games"]["10"]["all_achievements"]["available_date"], "2027-01-01")
+
     def test_tag_validation(self):
         for text in ["!tag add servers_shutdown", "!tag add shutdown", "!tag add Bad!Key", "!tag add mp_required"]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError):

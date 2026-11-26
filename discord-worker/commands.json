@@ -36,7 +36,7 @@
             "value": "broken_but_obtainable"
           },
           {
-            "name": "None (clear)",
+            "name": "None (obtainable again, notifies players who don't have it)",
             "value": "none"
           }
         ]
@@ -56,6 +56,13 @@
         "required": false,
         "max_length": 120,
         "autocomplete": true
+      },
+      {
+        "type": 3,
+        "name": "date",
+        "description": "date_sensitive: day it can be unlocked (YYYY-MM-DD) — notifies players then. none = remove",
+        "required": false,
+        "max_length": 10
       },
       {
         "type": 3,

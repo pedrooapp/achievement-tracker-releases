@@ -83,11 +83,13 @@ MAX_REPLY = 1900
 HELP = """**Achievement Tracker — warnings commands**
 Targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all`.
 `!ach <appid> <targets> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b]` + lines `en: …` / `pt: …` (note)
+`!clearwarning <appid> <targets>` (or `apiname=…`): clears the obtainability (= `none`; tags and note stay)
+`!ach <appid> <targets> date=YYYY-MM-DD`: date_sensitive — the day it can be unlocked (adds the tag; `date=none` removes the date)
 `!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=none|all|ACH_1;ACH_2]` + lines `en:` / `pt:` (shutdown summary)
 `!removeshutdown <appid>`
 `!remove <appid>` · `!remove <appid> <targets>` · `!show <appid>` · `!help`
 `!tag add <key>` + lines `en: Name` / `pt: Nome` · `!tag remove <key>` · `!tags`
-Obtainability notifies players who don't have the achievement · shutdown notifies players below 100% · tags never notify.
+Obtainability notifies players who don't have the achievement · clearing it (`none`, `!clearwarning`, `!remove`, `!removeshutdown`) tells them they can unlock it now · a `date=` day notifies players who don't have the achievement when it arrives · shutdown notifies players below 100% · tags never notify.
 Tags: """ + ", ".join(BUILTIN_TAGS) + " + any new key (`!tags`)"
 
 
@@ -115,6 +117,8 @@ KNOWN_KEYS = LIST_KEYS + ("obtainability", "tags", "add", "del", "remove", "date
 _KEY_RE = re.compile(r"(?:^|(?<=\s))(" + "|".join(KNOWN_KEYS) + r")=", re.I)
 # Nomes alternativos dos comandos.
 ALIASES = {"setwarning": "ach", "setshutdown": "shutdown"}
+# Comandos que marcam conquistas como corrigidas (limpa a obtenção; o app avisa "FIXED").
+FIX_COMMANDS = ("clearwarning", "fix", "fixed")
 
 
 def _split_unquoted(text: str, sep: str) -> list[str]:
@@ -171,6 +175,10 @@ def parse_command(content: str) -> Command | None:
     name = ALIASES.get(name_part[0].lower(), name_part[0].lower())
     rest = name_part[1] if len(name_part) > 1 else ""
     positional, options = _named_options(rest)
+    if name in FIX_COMMANDS:
+        # !clearwarning <appid> apiname=ACH_1;ACH_2 = !ach <appid> <alvos> obtainability=fixed
+        name = "ach"
+        options["obtainability"] = "fixed"
     for seg in segments[1:]:  # | en="…" | pt="…"
         options.update(_named_options(" " + seg.strip())[1])
 
@@ -256,11 +264,11 @@ def _targets(text: str, allow_none: bool = False) -> str | list[str]:
 def _obtainability(text: str) -> str | None:
     """`none` → None; valor antigo é traduzido; senão tem de ser uma das 3 categorias."""
     low = text.lower()
-    if low in ("none", "clear", "-"):
+    if low in ("none", "clear", "-", "fixed"):
         return None
     low = LEGACY_OBTAINABILITY.get(low, low)
     if low not in OBTAINABILITY:
-        raise CommandError(f"Unknown obtainability `{text}`. Use one of: {', '.join(OBTAINABILITY)} or `none`.")
+        raise CommandError(f"Unknown obtainability `{text}`. Use one of: {', '.join(OBTAINABILITY)}, `fixed` or `none`.")
     return low
 
 
@@ -426,14 +434,14 @@ def _game(games: dict, app_id: str) -> dict:
 
 
 def _is_empty_mark(mark: dict) -> bool:
-    return not (mark.get("obtainability") or mark.get("tags") or mark.get("note_en") or mark.get("note_pt"))
+    return not (mark.get("obtainability") or mark.get("tags") or mark.get("note_en") or mark.get("note_pt") or mark.get("available_date"))
 
 
 def _apply_mark(feed: dict, mark: dict, cmd: Command, kind: str | None) -> None:
     """Obtenção / tags / nota numa marcação (uma conquista ou `all_achievements`)."""
     tags: list[str] = list(mark.get("tags", []))
     if kind is not None:
-        if kind in ("none", "clear", "-") or kind in OBTAINABILITY or kind in LEGACY_OBTAINABILITY:
+        if kind in ("none", "clear", "-", "fixed") or kind in OBTAINABILITY or kind in LEGACY_OBTAINABILITY:
             o = _obtainability(kind)
             if o:
                 mark["obtainability"] = o
@@ -451,6 +459,18 @@ def _apply_mark(feed: dict, mark: dict, cmd: Command, kind: str | None) -> None:
         if key not in tags:
             tags.append(key)
     removing = _tag_list(cmd.options.get("del", "")) + _tag_list(cmd.options.get("remove", ""))
+    # date_sensitive: `date=AAAA-MM-DD` marca o dia em que a conquista pode ser obtida (o app avisa
+    # quem não a tem quando o dia chega) e põe a tag; `date=none` tira a data.
+    if "date" in cmd.options:
+        when = cmd.options["date"].strip().lower()
+        if when in ("none", "clear", "-", ""):
+            mark.pop("available_date", None)
+        else:
+            mark["available_date"] = _date(cmd.options["date"].strip())
+            if "date_sensitive" not in tags:
+                tags.append("date_sensitive")
+    if "date_sensitive" in removing:
+        mark.pop("available_date", None)
     mark["tags"] = [t for t in tags if t not in removing]
     for t in mark["tags"]:
         _ensure_tag(feed, t)

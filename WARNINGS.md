@@ -45,7 +45,7 @@ Spaces around `;` and repeated names are ignored.
 
 | Command | What it does |
 |---|---|
-| `/ach appid api_name [obtainability] [add_tags] [remove_tags] [en] [pt]` | Mark achievements (`api_name`: one, `ACH_1;ACH_2` or `all`). `obtainability: None` clears it. An achievement left with nothing is removed |
+| `/ach appid api_name [obtainability] [add_tags] [remove_tags] [en] [pt]` | Mark achievements (`api_name`: one, `ACH_1;ACH_2` or `all`). `obtainability: None` clears it, and the app tells players who started the game and don't have it that they can unlock it now. An achievement left with nothing is removed |
 | `/shutdown appid date [scope] [achievements] [en] [pt]` | Add or change the shutdown. `date` = `YYYY-MM-DD` or `now` (already off). `achievements` = `none`, `all` or `ACH_1;ACH_2`. `en`/`pt` = shutdown summary |
 | `/removeshutdown appid` | Remove the game's shutdown |
 | `/remove appid [api_name]` | Remove a game's warning, or some achievements (`ACH_1;ACH_2`, or `all` for the all-achievements mark) |
@@ -83,6 +83,15 @@ spaces work there too:
 ```
 
 `!setwarning` = `!ach`, `!setshutdown` = `!shutdown`, `shutdown_ach=` = `achievements=`.
+
+Date-sensitive achievement: `!ach 219150 apiname=Xmas Event date=2026-12-25` (or `date` in /ach) stores the day
+it can be unlocked and adds the `date_sensitive` tag. On that day, players who have the game and don't have the
+achievement are notified (once). `date=none` removes the date.
+
+Achievement obtainable again: `!clearwarning 219150 apiname=Pedro Approbato;ACH_2` (same as `obtainability=none`).
+It clears the obtainability (tags and note stay) and bumps the revision; players who started the game
+and don't have the achievement are told they can unlock it now. Removing the mark, the game or the
+shutdown does the same. Changing to another category (e.g. unobtainable → broken_but_obtainable) doesn't notify this.
 
 
 `!ach`, `!shutdown`, `!removeshutdown`, `!remove`, `!show`, `!tag add|remove`, `!tags`, `!help`. They're

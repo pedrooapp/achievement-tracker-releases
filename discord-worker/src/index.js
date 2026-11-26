@@ -102,7 +102,7 @@ function appIdOf(v) {
 
 function obtainabilityOf(v) {
   const o = clean(v).toLowerCase();
-  if (o === "none" || OBTAINABILITY.includes(o)) return o;
+  if (o === "none" || o === "fixed" || OBTAINABILITY.includes(o)) return o;
   throw new UserError(`Unknown obtainability \`${o}\`. Use: ${OBTAINABILITY.join(", ")} or none.`);
 }
 
@@ -162,6 +162,11 @@ export function toTextCommand(name, sub, values, feed) {
       for (const [opt, field] of [["add", "add_tags"], ["del", "remove_tags"]]) {
         if (clean(values[field])) head.push(`${opt}=${tagListOf(values[field], field)}`);
       }
+      if (clean(values.date)) {
+        const when = clean(values.date).toLowerCase();
+        if (when !== "none" && !/^\d{4}-\d{2}-\d{2}$/.test(when)) throw new UserError("`date` must be YYYY-MM-DD (or `none`).");
+        head.push(`date=${when}`);
+      }
       if (head.length === 2 && !textLines(values).length) {
         throw new UserError("Nothing to change: set `obtainability`, tags or a note. (Shutdowns use /shutdown.)");
       }
@@ -202,11 +207,11 @@ export function toTextCommand(name, sub, values, feed) {
 const HELP = [
   "**Achievement Tracker — warnings**",
   "Achievement targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all` (every achievement of the game).",
-  "`/ach` mark achievements: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), `add_tags` / `remove_tags`, note",
+  "`/ach` mark achievements: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), `add_tags` / `remove_tags`, `date` (date_sensitive: the day it can be unlocked), note",
   "`/shutdown` servers shutting down on a date (`date: YYYY-MM-DD`) or already off (`now`); `achievements`: none · all · `ACH_1;ACH_2` (they break on the date) · `/removeshutdown` takes it off",
   "`/remove` a game or some achievements · `/show` what's published · `/tag add|remove|list` names for your own tags",
   `Built-in tags: ${BUILTIN_TAGS.join(", ")} (any new key works too; \`shutdown\` is not a tag)`,
-  "Who gets notified: obtainability → players who don't have that achievement · shutdown → players below 100% · tags → nobody. The app writes the game summary from what's marked.",
+  "Who gets notified: obtainability → players who don't have that achievement · `none` (or removing the mark/shutdown) → the same players, saying they can unlock it now · `date` → players who don't have it, on that day · shutdown → players below 100% · tags → nobody. The app writes the game summary from what's marked.",
   "Changes are published in about 1 minute (✅ on the message, or ❌ with the reason). The app picks it up on its own within about 15 seconds after that.",
 ].join("\n");
 

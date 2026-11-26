@@ -146,6 +146,12 @@ test("sem token, não dispara e avisa ~10 min", async () => {
 test("alvos: lista com ; (sem repetir), all, e remove com lista", async () => {
   const many = await call(cmd("ach", [opt("appid", "5"), opt("api_name", " A ; B;A "), opt("obtainability", "possibly_obtainable")]));
   assert.match(many.data.data.content, /!ach 5 apiname=A;B obtainability=possibly_obtainable\n/);
+  const fixed = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "Pedro Approbato;B"), opt("obtainability", "none")]));
+  assert.match(fixed.data.data.content, /!ach 5 apiname=Pedro Approbato;B obtainability=none\n/);
+  const dated = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "Xmas Event"), opt("date", "2026-12-25")]));
+  assert.match(dated.data.data.content, /!ach 5 apiname=Xmas Event date=2026-12-25\n/);
+  const badDate = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "X"), opt("date", "25/12")]));
+  assert.match(badDate.data.data.content, /YYYY-MM-DD/);
   const all = await call(cmd("ach", [opt("appid", "5"), opt("api_name", "all"), opt("add_tags", "mp_required")]));
   assert.match(all.data.data.content, /!ach 5 apiname=all add=mp_required\n/);
   const empty = await call(cmd("ach", [opt("appid", "5"), opt("api_name", " ; "), opt("obtainability", "unobtainable")]));
