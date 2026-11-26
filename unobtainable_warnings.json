@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795649901,
+  "updated_at": 1795697138,
   "games": {
     "366260": {
       "revision": 2,
@@ -495,6 +495,23 @@
       },
       "obtainability": "unobtainable",
       "status": "servers_shutdown"
+    },
+    "1353300": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "achievement_idle_pumpkin": {
+          "available_date": "2026-11-26",
+          "tags": [
+            "date_sensitive"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "date_sensitive"
+        }
+      },
+      "status": "date_sensitive"
     }
   },
   "tags": {}
