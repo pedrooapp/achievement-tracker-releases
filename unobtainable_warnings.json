@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795813447,
+  "updated_at": 1795813571,
   "games": {
     "366260": {
       "revision": 2,
@@ -819,7 +819,7 @@
       "status": "dlc_required"
     },
     "2475460": {
-      "revision": 5,
+      "revision": 6,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
