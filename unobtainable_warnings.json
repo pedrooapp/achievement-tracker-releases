@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795786452,
+  "updated_at": 1795805843,
   "games": {
     "366260": {
       "revision": 2,
@@ -533,6 +533,84 @@
         "scope": null
       },
       "status": "servers_shutdown"
+    },
+    "851530": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "ach5": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach6": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach7": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach8": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach9": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach10": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach11": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
     }
   },
   "tags": {}
