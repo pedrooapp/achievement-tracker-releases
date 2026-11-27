@@ -85,6 +85,7 @@ Targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all`.
 `!ach <appid> <targets> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b]` + lines `en: …` / `pt: …` (note)
 `!clearwarning <appid> <targets>` (or `apiname=…`): clears the obtainability (= `none`; tags and note stay)
 `!ach <appid> <targets> date=YYYY-MM-DD [frequency=once|yearly]`: date_sensitive — the day it can be unlocked, once or every year (adds the tag; `date=none` removes the date)
+`!ach <appid> <targets> dlc_app_id=<DLC AppID>`: dlc_required — which DLC the achievements need; the name comes from Steam, which must list it as a DLC of this game (adds the tag; `dlc_app_id=none` removes it)
 `!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=none|all|ACH_1;ACH_2]` + lines `en:` / `pt:` (shutdown summary)
 `!removeshutdown <appid>`
 `!remove <appid>` · `!remove <appid> <targets>` · `!show <appid>` · `!help`
@@ -113,7 +114,7 @@ class Command:
 # "|" ou o fim da linha — então listas de conquistas podem ter espaços DENTRO de cada nome
 # (`apiname=Pedro Approbato;Outra Conquista`).
 LIST_KEYS = ("apiname", "target", "shutdown_ach", "achievements")
-KNOWN_KEYS = LIST_KEYS + ("obtainability", "tags", "add", "del", "remove", "date", "frequency", "scope", "shutdown", "en", "pt", "breaks100")
+KNOWN_KEYS = LIST_KEYS + ("obtainability", "tags", "add", "del", "remove", "date", "frequency", "dlc_app_id", "dlc_name", "scope", "shutdown", "en", "pt", "breaks100")
 _KEY_RE = re.compile(r"(?:^|(?<=\s))(" + "|".join(KNOWN_KEYS) + r")=", re.I)
 # Nomes alternativos dos comandos.
 ALIASES = {"setwarning": "ach", "setshutdown": "shutdown"}
@@ -437,6 +438,50 @@ def _is_empty_mark(mark: dict) -> bool:
     return not (mark.get("obtainability") or mark.get("tags") or mark.get("note_en") or mark.get("note_pt") or mark.get("available_date"))
 
 
+STORE_ITEMS_API = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/"
+# Steam: tipo de item da loja 4 = DLC.
+STORE_TYPE_DLC = 4
+_dlc_cache: dict[int, dict] = {}
+
+
+def _steam_store_item(app_id: int) -> dict:
+    """Item da loja pública da Steam (sem chave). Erro de rede vira CommandError: sem checar, não grava."""
+    if app_id in _dlc_cache:
+        return _dlc_cache[app_id]
+    query = {
+        "ids": [{"appid": app_id}],
+        "context": {"language": "english", "country_code": "US"},
+    }
+    url = STORE_ITEMS_API + "?" + urllib.parse.urlencode({"input_json": json.dumps(query)})
+    last = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                items = json.load(resp).get("response", {}).get("store_items") or []
+            item = next((i for i in items if i.get("id") == app_id), {})
+            _dlc_cache[app_id] = item
+            return item
+        except (urllib.error.URLError, TimeoutError, ValueError) as e:
+            last = e
+            time.sleep(1 + attempt)
+    raise CommandError(f"Couldn't reach Steam to check DLC `{app_id}` ({last}). Nothing was changed; try again.")
+
+
+def steam_dlc_name(dlc_app_id: int, game_app_id: str) -> str:
+    """Nome oficial da DLC na Steam, conferindo que o AppID existe, é DLC e é deste jogo."""
+    item = _steam_store_item(dlc_app_id)
+    name = (item.get("name") or "").strip()
+    if item.get("success") != 1 or not name:
+        raise CommandError(f"Steam doesn't know an app `{dlc_app_id}`. Check the DLC's AppID (the number in its store page URL).")
+    parent = (item.get("related_items") or {}).get("parent_appid")
+    if item.get("type") != STORE_TYPE_DLC or not parent:
+        raise CommandError(f"`{dlc_app_id}` is “{name}” on Steam, which isn't a DLC. Use the DLC's own AppID.")
+    if str(parent) != str(game_app_id):
+        raise CommandError(f"`{dlc_app_id}` (“{name}”) is a DLC of app `{parent}`, not of `{game_app_id}`.")
+    return name
+
+
 def _apply_mark(feed: dict, mark: dict, cmd: Command, kind: str | None) -> None:
     """Obtenção / tags / nota numa marcação (uma conquista ou `all_achievements`)."""
     tags: list[str] = list(mark.get("tags", []))
@@ -485,6 +530,27 @@ def _apply_mark(feed: dict, mark: dict, cmd: Command, kind: str | None) -> None:
     if "date_sensitive" in removing:
         mark.pop("available_date", None)
         mark.pop("date_frequency", None)
+    # dlc_required: `dlc_app_id=<AppID da DLC>` diz qual DLC a conquista exige e põe a tag
+    # (classificatória: não notifica). O nome vem da Steam, que precisa confirmar que o AppID é
+    # uma DLC DESTE jogo — nada é gravado sem essa checagem. `dlc_name=` é ignorado.
+    # `dlc_app_id=none` tira a DLC.
+    if "dlc_app_id" in cmd.options:
+        raw = cmd.options["dlc_app_id"].strip()
+        if raw.lower() in ("none", "clear", "-", ""):
+            mark.pop("dlc_app_id", None)
+            mark.pop("dlc_name", None)
+        else:
+            if not raw.isdigit() or not 0 < int(raw) <= 0xFFFFFFFF:
+                raise CommandError(f"`dlc_app_id={raw}`: use the DLC's Steam AppID (a positive whole number).")
+            dlc = int(raw)
+            name = steam_dlc_name(dlc, _app_id(cmd.args[0]))  # checa antes de mexer na marcação
+            mark["dlc_app_id"] = dlc
+            mark["dlc_name"] = name
+            if "dlc_required" not in tags:
+                tags.append("dlc_required")
+    if "dlc_required" in removing:
+        mark.pop("dlc_app_id", None)
+        mark.pop("dlc_name", None)
     mark["tags"] = [t for t in tags if t not in removing]
     for t in mark["tags"]:
         _ensure_tag(feed, t)

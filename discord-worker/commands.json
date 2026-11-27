@@ -81,6 +81,13 @@
         ]
       },
       {
+        "type": 4,
+        "name": "dlc_app_id",
+        "description": "dlc_required: the DLC's Steam AppID (name comes from Steam; must be a DLC of this game)",
+        "required": false,
+        "min_value": 1
+      },
+      {
         "type": 3,
         "name": "en",
         "description": "Note in English (optional)",

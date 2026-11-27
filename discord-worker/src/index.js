@@ -172,6 +172,11 @@ export function toTextCommand(name, sub, values, feed) {
         if (freq !== "once" && freq !== "yearly") throw new UserError("`frequency` must be once or yearly.");
         head.push(`frequency=${freq}`);
       }
+      if (values.dlc_app_id !== undefined && values.dlc_app_id !== null && String(values.dlc_app_id).trim() !== "") {
+        const id = String(values.dlc_app_id).trim();
+        if (!/^\d+$/.test(id) || Number(id) <= 0 || Number(id) > 4294967295) throw new UserError("`dlc_app_id` must be the DLC's Steam AppID.");
+        head.push(`dlc_app_id=${Number(id)}`);
+      }
       if (head.length === 2 && !textLines(values).length) {
         throw new UserError("Nothing to change: set `obtainability`, tags or a note. (Shutdowns use /shutdown.)");
       }
@@ -212,7 +217,7 @@ export function toTextCommand(name, sub, values, feed) {
 const HELP = [
   "**Achievement Tracker — warnings**",
   "Achievement targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all` (every achievement of the game).",
-  "`/ach` mark achievements: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), `add_tags` / `remove_tags`, `date` (date_sensitive: the day it can be unlocked) + `frequency` (once · yearly), note",
+  "`/ach` mark achievements: `obtainability` (unobtainable · possibly_obtainable · broken_but_obtainable · none), `add_tags` / `remove_tags`, `date` (date_sensitive: the day it can be unlocked) + `frequency` (once · yearly), `dlc_app_id` (dlc_required: which DLC; the name comes from Steam), note",
   "`/shutdown` servers shutting down on a date (`date: YYYY-MM-DD`) or already off (`now`); `achievements`: none · all · `ACH_1;ACH_2` (they break on the date) · `/removeshutdown` takes it off",
   "`/remove` a game or some achievements · `/show` what's published · `/tag add|remove|list` names for your own tags",
   `Built-in tags: ${BUILTIN_TAGS.join(", ")} (any new key works too; \`shutdown\` is not a tag)`,

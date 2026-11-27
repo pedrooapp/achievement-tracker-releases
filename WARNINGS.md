@@ -90,6 +90,13 @@ achievement are notified (once). `date=none` removes the date.
 Add `frequency=yearly` (or `frequency: Yearly` in /ach) for events that come back every year on the same day:
 the app then notifies again each year. `frequency=once` (the default) is a single date.
 
+DLC-required achievement: `!ach 219150 apiname=Pedro Approbato;Conquista DLC 1 dlc_app_id=456780`
+(or `dlc_app_id` in /ach) stores which DLC the achievements need and adds the `dlc_required` tag. It works for one
+achievement, several with `;` or `all`. The bot asks Steam for the DLC's official name and only saves it if Steam
+confirms the AppID is a DLC **of that game**; otherwise it replies with the problem and changes nothing (also when Steam
+can't be reached). Nobody types the name. The app shows it with a link to the DLC's Steam store page. Like every tag, it
+never notifies. `dlc_app_id=none` removes the DLC (the tag stays; `del=dlc_required` removes everything).
+
 Achievement obtainable again: `!clearwarning 219150 apiname=Pedro Approbato;ACH_2` (same as `obtainability=none`).
 It clears the obtainability (tags and note stay) and bumps the revision; players who started the game
 and don't have the achievement are told they can unlock it now. Removing the mark, the game or the

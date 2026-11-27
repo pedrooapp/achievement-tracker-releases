@@ -368,6 +368,59 @@ class Tags(unittest.TestCase):
         with self.assertRaises(sync.CommandError):
             sync.apply_command(feed, sync.parse_command("!ach 10 apiname=Xmas Event frequency=weekly"), 0)
 
+    def _fake_steam(self, items):
+        """Troca a consulta à Steam por um dicionário (sem rede nos testes)."""
+        original = sync._steam_store_item
+        sync._steam_store_item = lambda app_id: items.get(app_id, {"success": 15})
+        self.addCleanup(setattr, sync, "_steam_store_item", original)
+
+    def test_dlc_app_id(self):
+        dlc = lambda name, parent: {"success": 1, "type": 4, "name": name, "related_items": {"parent_appid": parent}}
+        self._fake_steam({456780: dlc("Expansion Pack I", 219150), 111: dlc("Other Pack", 219150), 222: dlc("Ten Pack", 10),
+                          333: dlc("Wrong Game Pack", 999), 444: {"success": 1, "type": 0, "name": "A Game"}})
+        feed = {"version": 3, "games": {}}
+        # dlc_name digitado é ignorado: o nome vem da Steam.
+        sync.apply_command(
+            feed,
+            sync.parse_command('!setwarning 219150 apiname=Pedro Approbato;Conquista DLC 1 tags=[dlc_required] dlc_app_id=456780 dlc_name="Typo Pack"'),
+            0,
+        )
+        achs = lambda: feed["games"]["219150"]["achievements"]
+        for api in ("Pedro Approbato", "Conquista DLC 1"):
+            a = achs()[api]
+            self.assertEqual((a["dlc_app_id"], a["dlc_name"], a["tags"]), (456780, "Expansion Pack I", ["dlc_required"]))
+            self.assertNotIn("obtainability", a, "dlc_required é classificatória")
+        # Só os alvos recebem; dlc_app_id sozinho põe a tag e o nome.
+        sync.apply_command(feed, sync.parse_command("!ach 219150 apiname=Outra dlc_app_id=111"), 0)
+        self.assertEqual((achs()["Outra"]["dlc_app_id"], achs()["Outra"]["dlc_name"], achs()["Outra"]["tags"]), (111, "Other Pack", ["dlc_required"]))
+        self.assertEqual(achs()["Pedro Approbato"]["dlc_app_id"], 456780)
+        # all
+        sync.apply_command(feed, sync.parse_command("!ach 10 all dlc_app_id=222"), 0)
+        self.assertEqual(feed["games"]["10"]["all_achievements"]["dlc_name"], "Ten Pack")
+        # Inválidos: formato, desconhecido na Steam, não é DLC, DLC de outro jogo — nada gravado.
+        before = json.dumps(feed, sort_keys=True)
+        for bad in ("abc", "0", "-5", "1.5", "99999999999", "555", "444", "333"):
+            with self.subTest(bad=bad), self.assertRaises(sync.CommandError):
+                sync.apply_command(feed, sync.parse_command(f"!ach 219150 apiname=Outra dlc_app_id={bad}"), 0)
+        self.assertEqual(json.dumps(feed, sort_keys=True), before)
+        # Remover
+        sync.apply_command(feed, sync.parse_command("!ach 219150 apiname=Pedro Approbato dlc_app_id=none"), 0)
+        self.assertNotIn("dlc_app_id", achs()["Pedro Approbato"])
+        self.assertNotIn("dlc_name", achs()["Pedro Approbato"])
+        sync.apply_command(feed, sync.parse_command("!ach 219150 apiname=Conquista DLC 1 del=dlc_required"), 0)
+        self.assertFalse({"dlc_app_id", "dlc_name"} & set(achs().get("Conquista DLC 1", {})))
+
+    def test_dlc_steam_offline_changes_nothing(self):
+        def offline(app_id):
+            raise sync.CommandError("Couldn't reach Steam")
+        original = sync._steam_store_item
+        sync._steam_store_item = offline
+        self.addCleanup(setattr, sync, "_steam_store_item", original)
+        feed = {"version": 3, "games": {}}
+        with self.assertRaises(sync.CommandError):
+            sync.apply_command(feed, sync.parse_command("!ach 5 apiname=X dlc_app_id=7"), 0)
+        self.assertEqual(feed["games"], {})
+
     def test_tag_validation(self):
         for text in ["!tag add servers_shutdown", "!tag add shutdown", "!tag add Bad!Key", "!tag add mp_required"]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError):
