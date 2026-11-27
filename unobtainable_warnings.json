@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795784119,
+  "updated_at": 1795786205,
   "games": {
     "366260": {
       "revision": 2,
@@ -61,8 +61,8 @@
       }
     },
     "1172620": {
-      "revision": 13,
-      "status": "partial_broken",
+      "revision": 14,
+      "status": "unobtainable_100",
       "summary_en": "One or more achievements can't be unlocked, so 100% isn't possible right now.",
       "summary_pt": "Uma ou mais conquistas não podem ser desbloqueadas, então o 100% não é possível no momento.",
       "achievements": {
@@ -114,6 +114,13 @@
           "note_en": "",
           "note_pt": "",
           "type": "partial_broken"
+        },
+        "202": {
+          "obtainability": "unobtainable",
+          "tags": [],
+          "note_en": "",
+          "note_pt": "",
+          "type": "unobtainable_100"
         }
       }
     },
