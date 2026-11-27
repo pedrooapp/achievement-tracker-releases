@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795812843,
+  "updated_at": 1795813246,
   "games": {
     "366260": {
       "revision": 2,
@@ -819,7 +819,7 @@
       "status": "dlc_required"
     },
     "2475460": {
-      "revision": 3,
+      "revision": 4,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
@@ -834,8 +834,8 @@
           "type": "dlc_required"
         },
         "ACH_DLC_GUNS_DESERT": {
-          "dlc_app_id": 5241370,
-          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "dlc_app_id": 2902230,
+          "dlc_name": "SOS OPS! - GUNS N' OPS",
           "tags": [
             "dlc_required"
           ],
@@ -844,8 +844,8 @@
           "type": "dlc_required"
         },
         "ACH_DLC_GUNS_OFFICE": {
-          "dlc_app_id": 5241370,
-          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "dlc_app_id": 2902230,
+          "dlc_name": "SOS OPS! - GUNS N' OPS",
           "tags": [
             "dlc_required"
           ],
