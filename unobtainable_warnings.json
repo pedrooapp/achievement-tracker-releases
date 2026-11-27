@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795815795,
+  "updated_at": 1795817026,
   "games": {
     "366260": {
       "revision": 2,
@@ -408,7 +408,7 @@
       "status": "servers_shutdown"
     },
     "1978210": {
-      "revision": 1,
+      "revision": 2,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
@@ -418,7 +418,9 @@
           ],
           "note_en": "",
           "note_pt": "",
-          "type": "dlc_required"
+          "type": "dlc_required",
+          "dlc_app_id": 3694440,
+          "dlc_name": "The Grinch: Christmas Adventures - Determined to Love Christmas"
         },
         "ChristmasSpirit": {
           "tags": [
@@ -426,7 +428,9 @@
           ],
           "note_en": "",
           "note_pt": "",
-          "type": "dlc_required"
+          "type": "dlc_required",
+          "dlc_app_id": 3694440,
+          "dlc_name": "The Grinch: Christmas Adventures - Determined to Love Christmas"
         },
         "ChristmasFeast": {
           "tags": [
@@ -434,7 +438,9 @@
           ],
           "note_en": "",
           "note_pt": "",
-          "type": "dlc_required"
+          "type": "dlc_required",
+          "dlc_app_id": 3694440,
+          "dlc_name": "The Grinch: Christmas Adventures - Determined to Love Christmas"
         }
       },
       "status": "dlc_required"
