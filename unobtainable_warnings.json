@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795805843,
+  "updated_at": 1795805973,
   "games": {
     "366260": {
       "revision": 2,
@@ -602,6 +602,94 @@
         "ach11": {
           "dlc_app_id": 1199310,
           "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
+    },
+    "668580": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "YouReadTheInstructions": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "DemonstrationOfViolence": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "FirstTalkDLC3": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "EndOfDLC3": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "WaterSports": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "SurvivalMaster": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "Beyond": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "MobiDik": {
+          "dlc_app_id": 2214823,
+          "dlc_name": "Atomic Heart - Enchantment Under the Sea",
           "tags": [
             "dlc_required"
           ],
