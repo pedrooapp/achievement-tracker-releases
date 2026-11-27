@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795806080,
+  "updated_at": 1795807028,
   "games": {
     "366260": {
       "revision": 2,
@@ -740,6 +740,74 @@
         "MobiDik": {
           "dlc_app_id": 2214823,
           "dlc_name": "Atomic Heart - Enchantment Under the Sea",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
+    },
+    "282800": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "ACH_OJ60_C13": {
+          "dlc_app_id": 4999180,
+          "dlc_name": "100% Orange Juice - Rinse & Suishou Character Pack",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_OJ60_C12": {
+          "dlc_app_id": 4999180,
+          "dlc_name": "100% Orange Juice - Rinse & Suishou Character Pack",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_OJ60_C11": {
+          "dlc_app_id": 4999180,
+          "dlc_name": "100% Orange Juice - Rinse & Suishou Character Pack",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_OJ60_C03": {
+          "dlc_app_id": 4999180,
+          "dlc_name": "100% Orange Juice - Rinse & Suishou Character Pack",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_OJ60_C02": {
+          "dlc_app_id": 4999180,
+          "dlc_name": "100% Orange Juice - Rinse & Suishou Character Pack",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_OJ60_C01": {
+          "dlc_app_id": 4999180,
+          "dlc_name": "100% Orange Juice - Rinse & Suishou Character Pack",
           "tags": [
             "dlc_required"
           ],
