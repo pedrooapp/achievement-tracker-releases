@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795807028,
+  "updated_at": 1795807170,
   "games": {
     "366260": {
       "revision": 2,
@@ -808,6 +808,114 @@
         "ACH_OJ60_C01": {
           "dlc_app_id": 4999180,
           "dlc_name": "100% Orange Juice - Rinse & Suishou Character Pack",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
+    },
+    "2475460": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "ACH_DLC_BACKROOMS": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_GUNS_DESERT": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_GUNS_OFFICE": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_LOOTBOUND": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_OB_CRASHNEWS": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_OB_DEALFAIL": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_OB_DEALSUCCESS": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_OB_FULLPLANE": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_OB_POLICE_FIRED": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_OB_POLICE_PROMOTED": {
+          "dlc_app_id": 5241370,
+          "dlc_name": "SOS OPS! - OVERBOOKED",
           "tags": [
             "dlc_required"
           ],
