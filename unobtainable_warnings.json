@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795815461,
+  "updated_at": 1795815507,
   "games": {
     "366260": {
       "revision": 2,
@@ -955,6 +955,74 @@
         "scope": null
       },
       "status": "servers_shutdown"
+    },
+    "1522820": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "CloseTheirEyes": {
+          "dlc_app_id": 1781510,
+          "dlc_name": "Orcs Must Die! 3 - Cold as Eyes DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "GoldenMonocle": {
+          "dlc_app_id": 1781510,
+          "dlc_name": "Orcs Must Die! 3 - Cold as Eyes DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "IceBreaker": {
+          "dlc_app_id": 1781510,
+          "dlc_name": "Orcs Must Die! 3 - Cold as Eyes DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "PokeintheEye": {
+          "dlc_app_id": 1781510,
+          "dlc_name": "Orcs Must Die! 3 - Cold as Eyes DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "TheEyesHaveIt": {
+          "dlc_app_id": 1781510,
+          "dlc_name": "Orcs Must Die! 3 - Cold as Eyes DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "WillingtoSacrifice": {
+          "dlc_app_id": 1781510,
+          "dlc_name": "Orcs Must Die! 3 - Cold as Eyes DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
     }
   },
   "tags": {}
