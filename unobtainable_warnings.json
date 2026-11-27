@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795817175,
+  "updated_at": 1795817215,
   "games": {
     "366260": {
       "revision": 2,
@@ -1112,13 +1112,23 @@
       "status": "servers_shutdown"
     },
     "1401590": {
-      "revision": 1,
+      "revision": 2,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
         "STEAM_ACH_FISHING": {
           "dlc_app_id": 4127930,
           "dlc_name": "Disney Dreamlight Valley — Wishblossom Ranch Edition",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "STEAM_ACH_MINING": {
+          "dlc_app_id": 3259120,
+          "dlc_name": "Disney Dreamlight Valley: The Storybook Vale",
           "tags": [
             "dlc_required"
           ],
