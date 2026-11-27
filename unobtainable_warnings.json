@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795807517,
+  "updated_at": 1795812843,
   "games": {
     "366260": {
       "revision": 2,
@@ -819,13 +819,13 @@
       "status": "dlc_required"
     },
     "2475460": {
-      "revision": 2,
+      "revision": 3,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
         "ACH_DLC_BACKROOMS": {
-          "dlc_app_id": 5241370,
-          "dlc_name": "SOS OPS! - OVERBOOKED",
+          "dlc_app_id": 4446280,
+          "dlc_name": "SOS OPS! - BACKROOMS",
           "tags": [
             "dlc_required"
           ],
