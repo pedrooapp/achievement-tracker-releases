@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795813246,
+  "updated_at": 1795813447,
   "games": {
     "366260": {
       "revision": 2,
@@ -819,7 +819,7 @@
       "status": "dlc_required"
     },
     "2475460": {
-      "revision": 4,
+      "revision": 5,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
@@ -916,6 +916,16 @@
         "ACH_DLC_OB_POLICE_PROMOTED": {
           "dlc_app_id": 5241370,
           "dlc_name": "SOS OPS! - OVERBOOKED",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_TRIALS_COURSE": {
+          "dlc_app_id": 3086710,
+          "dlc_name": "SOS OPS! - TRIALS",
           "tags": [
             "dlc_required"
           ],
