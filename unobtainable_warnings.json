@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795814968,
+  "updated_at": 1795815461,
   "games": {
     "366260": {
       "revision": 2,
@@ -935,6 +935,26 @@
         }
       },
       "status": "dlc_required"
+    },
+    "1245480": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {},
+      "shutdown_info": {
+        "achievement_scope": "all",
+        "target_achievements": [],
+        "summary_en": "",
+        "summary_pt": "",
+        "scope": null,
+        "is_shutdown": true,
+        "shutdown_date": "2027-05-01"
+      },
+      "shutdown": {
+        "date": "2027-05-01",
+        "scope": null
+      },
+      "status": "servers_shutdown"
     }
   },
   "tags": {}
