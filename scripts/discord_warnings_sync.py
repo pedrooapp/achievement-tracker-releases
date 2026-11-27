@@ -84,6 +84,7 @@ HELP = """**Achievement Tracker — warnings commands**
 Targets: one API name, several with `;` (`ACH_1;ACH_2`) or `all`.
 `!ach <appid> <targets> [unobtainable|possibly_obtainable|broken_but_obtainable|none] [tags=a,b] [add=a,b] [del=a,b]` + lines `en: …` / `pt: …` (note)
 `!clearwarning <appid> <targets>` (or `apiname=…`): clears the obtainability (= `none`; tags and note stay)
+`!cleartags <appid> <targets>` (or `apiname=…`): removes every tag from those achievements, with their date / DLC (obtainability and note stay)
 `!ach <appid> <targets> date=YYYY-MM-DD [frequency=once|yearly]`: date_sensitive — the day it can be unlocked, once or every year (adds the tag; `date=none` removes the date)
 `!ach <appid> <targets> dlc_app_id=<DLC AppID>`: dlc_required — which DLC the achievements need; the name comes from Steam, which must list it as a DLC of this game (adds the tag; `dlc_app_id=none` removes it)
 `!shutdown <appid> <YYYY-MM-DD|now|remove> [scope=text] [achievements=none|all|ACH_1;ACH_2]` + lines `en:` / `pt:` (shutdown summary)
@@ -120,6 +121,8 @@ _KEY_RE = re.compile(r"(?:^|(?<=\s))(" + "|".join(KNOWN_KEYS) + r")=", re.I)
 ALIASES = {"setwarning": "ach", "setshutdown": "shutdown"}
 # Comandos que marcam conquistas como corrigidas (limpa a obtenção; o app avisa "FIXED").
 FIX_COMMANDS = ("clearwarning", "fix", "fixed")
+# Comandos que tiram TODAS as tags das conquistas (e a data/DLC que dependiam delas).
+CLEAR_TAGS_COMMANDS = ("cleartags", "clear_tags", "notags")
 
 
 def _split_unquoted(text: str, sep: str) -> list[str]:
@@ -180,6 +183,10 @@ def parse_command(content: str) -> Command | None:
         # !clearwarning <appid> apiname=ACH_1;ACH_2 = !ach <appid> <alvos> obtainability=fixed
         name = "ach"
         options["obtainability"] = "fixed"
+    elif name in CLEAR_TAGS_COMMANDS:
+        # !cleartags <appid> apiname=ACH_1;ACH_2 = !ach <appid> <alvos> tags= (lista vazia)
+        name = "ach"
+        options["tags"] = ""
     for seg in segments[1:]:  # | en="…" | pt="…"
         options.update(_named_options(" " + seg.strip())[1])
 
@@ -552,6 +559,13 @@ def _apply_mark(feed: dict, mark: dict, cmd: Command, kind: str | None) -> None:
         mark.pop("dlc_app_id", None)
         mark.pop("dlc_name", None)
     mark["tags"] = [t for t in tags if t not in removing]
+    # Data e DLC só existem junto da tag (date_sensitive / dlc_required).
+    if "date_sensitive" not in mark["tags"]:
+        mark.pop("available_date", None)
+        mark.pop("date_frequency", None)
+    if "dlc_required" not in mark["tags"]:
+        mark.pop("dlc_app_id", None)
+        mark.pop("dlc_name", None)
     for t in mark["tags"]:
         _ensure_tag(feed, t)
     if not mark.get("obtainability"):

@@ -421,6 +421,29 @@ class Tags(unittest.TestCase):
             sync.apply_command(feed, sync.parse_command("!ach 5 apiname=X dlc_app_id=7"), 0)
         self.assertEqual(feed["games"], {})
 
+    def test_cleartags(self):
+        dlc = {"success": 1, "type": 4, "name": "Pack", "related_items": {"parent_appid": 7}}
+        self._fake_steam({70: dlc})
+        feed = {"version": 3, "games": {}}
+        run = lambda text: sync.apply_command(feed, sync.parse_command(text), 0)
+        run("!ach 7 apiname=Boss One;Boss Two obtainability=unobtainable add=mp_required,speedrun dlc_app_id=70\nen: Needs the pack")
+        run("!ach 7 apiname=Xmas date=2026-12-25 frequency=yearly")
+        run("!ach 7 apiname=Only Tags add=mp_required")
+        run("!cleartags 7 apiname=Boss One;Xmas;Only Tags")
+        achs = feed["games"]["7"]["achievements"]
+        boss = achs["Boss One"]
+        self.assertEqual(boss["tags"], [])
+        self.assertFalse({"dlc_app_id", "dlc_name"} & set(boss), "DLC sai junto com a tag")
+        self.assertEqual((boss["obtainability"], boss["note_en"]), ("unobtainable", "Needs the pack"), "obtenção e nota ficam")
+        self.assertNotIn("Xmas", achs, "só tinha tag e data: a marcação some")
+        self.assertNotIn("Only Tags", achs)
+        self.assertEqual((achs["Boss Two"]["tags"], achs["Boss Two"]["dlc_app_id"]), (["mp_required", "speedrun", "dlc_required"], 70), "fora dos alvos: intacta")
+        # all e aliases
+        run("!ach 7 all add=dlc_required")
+        run("!notags 7 all")
+        self.assertNotIn("all_achievements", feed["games"]["7"])
+        self.assertIn("cleartags", sync.HELP)
+
     def test_tag_validation(self):
         for text in ["!tag add servers_shutdown", "!tag add shutdown", "!tag add Bad!Key", "!tag add mp_required"]:
             with self.subTest(text=text), self.assertRaises(sync.CommandError):

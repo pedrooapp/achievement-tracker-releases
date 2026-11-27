@@ -97,6 +97,11 @@ confirms the AppID is a DLC **of that game**; otherwise it replies with the prob
 can't be reached). Nobody types the name. The app shows it with a link to the DLC's Steam store page. Like every tag, it
 never notifies. `dlc_app_id=none` removes the DLC (the tag stays; `del=dlc_required` removes everything).
 
+Clear tags: `!cleartags 219150 apiname=Pedro Approbato;ACH_2` (or `/cleartags`, or `all`) removes every tag from
+those achievements, together with the date (`date_sensitive`) and the DLC (`dlc_required`) that depended on them.
+Obtainability and note stay; an achievement left with nothing is removed from the warning. Tags never notify, so this
+doesn't notify either.
+
 Achievement obtainable again: `!clearwarning 219150 apiname=Pedro Approbato;ACH_2` (same as `obtainability=none`).
 It clears the obtainability (tags and note stay) and bumps the revision; players who started the game
 and don't have the achievement are told they can unlock it now. Removing the mark, the game or the

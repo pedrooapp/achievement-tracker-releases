@@ -197,6 +197,8 @@ export function toTextCommand(name, sub, values, feed) {
     }
     case "removeshutdown":
       return `!removeshutdown ${appIdOf(values.appid)}`;
+    case "cleartags":
+      return `!cleartags ${appIdOf(values.appid)} apiname=${targetsOf(values.api_name, "api_name")}`;
     case "remove": {
       const app = appIdOf(values.appid);
       return clean(values.api_name) ? `!remove ${app} apiname=${targetsOf(values.api_name, "api_name")}` : `!remove ${app}`;

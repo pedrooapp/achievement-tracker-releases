@@ -185,6 +185,26 @@
     ]
   },
   {
+    "name": "cleartags",
+    "description": "Remove every tag from achievements (with their date / DLC). Obtainability and note stay",
+    "options": [
+      {
+        "type": 4,
+        "name": "appid",
+        "description": "Steam AppID",
+        "required": true,
+        "min_value": 1
+      },
+      {
+        "type": 3,
+        "name": "api_name",
+        "description": "API name (spaces OK), several separated by ; (ACH_1;ACH_2), or all",
+        "required": true,
+        "max_length": 1000
+      }
+    ]
+  },
+  {
     "name": "show",
     "description": "Show what is published for a game",
     "options": [
