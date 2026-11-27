@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795805973,
+  "updated_at": 1795806080,
   "games": {
     "366260": {
       "revision": 2,
@@ -535,7 +535,7 @@
       "status": "servers_shutdown"
     },
     "851530": {
-      "revision": 1,
+      "revision": 2,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
@@ -600,6 +600,56 @@
           "type": "dlc_required"
         },
         "ach11": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach05": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach06": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach07": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach08": {
+          "dlc_app_id": 1199310,
+          "dlc_name": "Mini-Dead: Tarot",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ach09": {
           "dlc_app_id": 1199310,
           "dlc_name": "Mini-Dead: Tarot",
           "tags": [
