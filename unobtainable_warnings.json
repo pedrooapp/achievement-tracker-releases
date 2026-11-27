@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795815700,
+  "updated_at": 1795815795,
   "games": {
     "366260": {
       "revision": 2,
@@ -957,7 +957,7 @@
       "status": "servers_shutdown"
     },
     "1522820": {
-      "revision": 1,
+      "revision": 2,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
@@ -1014,6 +1014,66 @@
         "WillingtoSacrifice": {
           "dlc_app_id": 1781510,
           "dlc_name": "Orcs Must Die! 3 - Cold as Eyes DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "CollectingTails": {
+          "dlc_app_id": 1936590,
+          "dlc_name": "Orcs Must Die! 3 - Tipping the Scales DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "HeadsandTails": {
+          "dlc_app_id": 1936590,
+          "dlc_name": "Orcs Must Die! 3 - Tipping the Scales DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "PerfectBalance": {
+          "dlc_app_id": 1936590,
+          "dlc_name": "Orcs Must Die! 3 - Tipping the Scales DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ScaleNecklace": {
+          "dlc_app_id": 1936590,
+          "dlc_name": "Orcs Must Die! 3 - Tipping the Scales DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "SheddingSkin": {
+          "dlc_app_id": 1936590,
+          "dlc_name": "Orcs Must Die! 3 - Tipping the Scales DLC",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ThumbontheScale": {
+          "dlc_app_id": 1936590,
+          "dlc_name": "Orcs Must Die! 3 - Tipping the Scales DLC",
           "tags": [
             "dlc_required"
           ],
