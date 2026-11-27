@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795817026,
+  "updated_at": 1795817175,
   "games": {
     "366260": {
       "revision": 2,
@@ -1110,6 +1110,24 @@
       },
       "obtainability": "unobtainable",
       "status": "servers_shutdown"
+    },
+    "1401590": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "STEAM_ACH_FISHING": {
+          "dlc_app_id": 4127930,
+          "dlc_name": "Disney Dreamlight Valley — Wishblossom Ranch Edition",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
     }
   },
   "tags": {}
