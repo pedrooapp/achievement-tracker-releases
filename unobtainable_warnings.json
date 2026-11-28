@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795829223,
+  "updated_at": 1795829464,
   "games": {
     "366260": {
       "revision": 2,
@@ -1470,6 +1470,34 @@
         "ACH_1010": {
           "dlc_app_id": 2934450,
           "dlc_name": "Crime Boss: Rockay City - Dragon's Gold Cup",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
+    },
+    "2475460": {
+      "revision": 2,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "ACH_DLC_BACKROOMS": {
+          "dlc_app_id": 4446280,
+          "dlc_name": "SOS OPS! - BACKROOMS",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_GUNS_DESERT": {
+          "dlc_app_id": 2902230,
+          "dlc_name": "SOS OPS! - GUNS N' OPS",
           "tags": [
             "dlc_required"
           ],
