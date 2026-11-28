@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795829606,
+  "updated_at": 1795829626,
   "games": {
     "366260": {
       "revision": 2,
@@ -1481,7 +1481,7 @@
       "status": "dlc_required"
     },
     "2475460": {
-      "revision": 3,
+      "revision": 4,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
@@ -1508,6 +1508,16 @@
         "ACH_DLC_GUNS_OFFICE": {
           "dlc_app_id": 2902230,
           "dlc_name": "SOS OPS! - GUNS N' OPS",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_TRIALS_COURSE": {
+          "dlc_app_id": 3086710,
+          "dlc_name": "SOS OPS! - TRIALS",
           "tags": [
             "dlc_required"
           ],
