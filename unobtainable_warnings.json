@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795829464,
+  "updated_at": 1795829606,
   "games": {
     "366260": {
       "revision": 2,
@@ -1481,7 +1481,7 @@
       "status": "dlc_required"
     },
     "2475460": {
-      "revision": 2,
+      "revision": 3,
       "summary_en": "",
       "summary_pt": "",
       "achievements": {
@@ -1496,6 +1496,16 @@
           "type": "dlc_required"
         },
         "ACH_DLC_GUNS_DESERT": {
+          "dlc_app_id": 2902230,
+          "dlc_name": "SOS OPS! - GUNS N' OPS",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_DLC_GUNS_OFFICE": {
           "dlc_app_id": 2902230,
           "dlc_name": "SOS OPS! - GUNS N' OPS",
           "tags": [
