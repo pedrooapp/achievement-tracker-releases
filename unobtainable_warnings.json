@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated_at": 1795828178,
+  "updated_at": 1795828635,
   "games": {
     "366260": {
       "revision": 2,
@@ -1509,6 +1509,54 @@
       },
       "obtainability": "unobtainable",
       "status": "servers_shutdown"
+    },
+    "2933080": {
+      "revision": 1,
+      "summary_en": "",
+      "summary_pt": "",
+      "achievements": {
+        "ACH_2011": {
+          "dlc_app_id": 2939860,
+          "dlc_name": "Crime Boss: Rockay City - Cagnali's Order",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_2020": {
+          "dlc_app_id": 2939860,
+          "dlc_name": "Crime Boss: Rockay City - Cagnali's Order",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_2010": {
+          "dlc_app_id": 2939860,
+          "dlc_name": "Crime Boss: Rockay City - Cagnali's Order",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        },
+        "ACH_2012": {
+          "dlc_app_id": 2939860,
+          "dlc_name": "Crime Boss: Rockay City - Cagnali's Order",
+          "tags": [
+            "dlc_required"
+          ],
+          "note_en": "",
+          "note_pt": "",
+          "type": "dlc_required"
+        }
+      },
+      "status": "dlc_required"
     }
   },
   "tags": {}
